@@ -67,17 +67,17 @@ Beispiel (Add-on-Einstellungen):
 
 api_base_url: "https://app.groupalarm.com/api/v1"
 token: "DEIN_PERSONAL_ACCESS_TOKEN"
-# optional, steuert nur den Header-Namen:
-# token_type: "personal"   # "personal" → Personal-Access-Token (Default)
-# token_type: "api"        # "api"      → API-TOKEN
+optional, steuert nur den Header-Namen:
+token_type: "personal"   # "personal" → Personal-Access-Token (Default)
+token_type: "api"        # "api"      → API-TOKEN
 poll_interval_sec: 30
 
-# Ingress/Anzeige
+Ingress/Anzeige
 device_name: "GroupAlarm Bridge"
 device_id: "groupalarm_bridge_1"
 verify_tls: true
 
-# MQTT (optional, nur wenn Discovery/Buttons gewünscht)
+MQTT (optional, nur wenn Discovery/Buttons gewünscht)
 mqtt_host: "homeassistant"     # oder "core-mosquitto"
 mqtt_port: 1883
 mqtt_username: ""
