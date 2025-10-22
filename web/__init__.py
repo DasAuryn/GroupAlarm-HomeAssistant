@@ -49,23 +49,7 @@ def alarms_json():
 
 @app.get("/")
 def index():
-    ui = load_ui_cache() or {}
-    names = ui.get("names", {})
-    avatars = ui.get("avatars", {})
-
-    alarms_data = load_alarms_cache() or {}
-    by_org = alarms_data.get("by_org", {})
-    order = [oid for oid, lst in by_org.items() if lst] or sorted(by_org.keys())
-
-    items = []
-    for oid in order:
-        items.append({
-            "id": oid,
-            "name": names.get(oid, f"Org {oid}"),
-            "avatar": avatars.get(oid, ""),
-            "alarms": by_org.get(oid, []),
-        })
-    return render_template("alarms.html", orgs=items, active_tab="alarms")
+    return redirect(url_for("alarms_page"))
 
 
 @app.get("/dashboard")
