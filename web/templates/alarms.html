@@ -254,21 +254,28 @@
         {% endfor %}
     </div>
     <script>
-        let lastTs = 0;
+        let lastSig = null;
+
         async function check() {
             try {
                 const res = await fetch('./alarms.json', { cache: 'no-store' });
                 if (!res.ok) return;
                 const j = await res.json();
-                if (j.ts && j.ts !== lastTs) {
-                    lastTs = j.ts;
+
+                if (lastSig === null) {
+                    lastSig = j.sig || "";
+                    return;
+                }
+                if (j.sig && j.sig !== lastSig) {
                     window.location.reload();
                 }
             } catch (e) { /* ignore */ }
         }
+
         check();
         setInterval(check, 5000);
     </script>
+
     <script>
         document.querySelectorAll('.map[data-lat][data-lon]').forEach(el => {
             const lat = parseFloat(el.getAttribute('data-lat'));

@@ -2,6 +2,7 @@
 import os
 import requests
 from flask import Flask, render_template, redirect, url_for, jsonify
+import json, hashlib
 
 from run_state import load_ui_cache, load_alarms_cache
 
@@ -36,10 +37,15 @@ app = Flask(__name__, template_folder="templates", static_folder="static")
 @app.get("/alarms.json")
 def alarms_json():
     data = load_alarms_cache() or {}
-    return jsonify({
-        "ts": data.get("ts", 0),
-        "counts": {str(k): len(v) for k, v in (data.get("by_org") or {}).items()}
-    })
+    by_org = data.get("by_org") or {}
+
+
+    norm = json.dumps(by_org, sort_keys=True, separators=(",", ":")).encode("utf-8", "ignore")
+    sig = hashlib.sha1(norm).hexdigest()
+
+    counts = {str(k): len(v) for k, v in by_org.items()}
+    return jsonify({"sig": sig, "counts": counts})
+
 
 @app.get("/")
 def index():
