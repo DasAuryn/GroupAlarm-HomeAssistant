@@ -1,135 +1,106 @@
+<!-- web/templates/alarms.html -->
 <!doctype html>
 <html lang="de">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>GroupAlarm – Alarme</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Leaflet von CDN (funktioniert in der Regel via Ingress) -->
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
     crossorigin=""
   />
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+
   <style>
-    :root { --brand:#2980b9; --bg:#0b1722; --card:#0f2131; --text:#e8eef5; --muted:#9fb3c8; }
-    body{margin:0;background:var(--bg);color:var(--text);font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
-    header{display:flex;align-items:center;gap:.75rem;padding:12px 16px;background:linear-gradient(180deg,#134a7a,transparent)}
-    header img{width:28px;height:28px;border-radius:50%;object-fit:cover;background:#1b3350}
-    header h1{font-size:16px;font-weight:600;margin:0}
-    .wrap{padding:12px;display:grid;gap:12px}
-    .org{background:var(--card);border-radius:14px;padding:12px}
-    .org h2{display:flex;gap:.5rem;align-items:center;margin:0 0 8px 0;font-size:15px}
-    .org h2 img{width:22px;height:22px;border-radius:50%;object-fit:cover;background:#122235}
-    .alarms{display:grid;gap:8px}
-    .alarm{background:#0b1a29;border:1px solid #14324d;border-radius:12px;padding:10px}
-    .alarm .top{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:6px}
-    .pill{padding:2px 8px;border-radius:999px;background:#14324d;border:1px solid #20507a;color:#cfe6ff;font-size:12px}
-    .msg{font-size:14px;margin:0 0 6px 0}
-    .meta{color:var(--muted);font-size:12px}
-    .map{height:280px;border-radius:12px;overflow:hidden;margin-top:10px;border:1px solid #14324d}
-    a.btn{color:#fff;text-decoration:none;background:var(--brand);padding:8px 12px;border-radius:10px;border:1px solid #3b7fb3}
-    .headnav{margin-left:auto;display:flex;gap:8px}
+    :root { color-scheme: light dark; }
+    body { margin: 0; font: 14px system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+    header {
+      display:flex; gap:.5rem; align-items:center; padding: .75rem 1rem;
+      border-bottom: 1px solid rgba(0,0,0,.1);
+      position: sticky; top: 0; background: var(--ha-card-background, #fff); z-index: 10;
+    }
+    header a { text-decoration: none; color: inherit; padding: .4rem .6rem; border-radius: .5rem; }
+    header a.active { background: rgba(0,0,0,.06); }
+    .page { padding: 1rem; max-width: 1100px; margin: 0 auto; }
+    .alarm {
+      border: 1px solid rgba(0,0,0,.1); border-radius: 14px; padding: .9rem; margin: .8rem 0;
+      background: var(--ha-card-background, #fff); box-shadow: 0 1px 6px rgba(0,0,0,.05);
+    }
+    .row { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+    .sev-dot {
+      width: .8rem; height: .8rem; border-radius: 50%;
+      border: 1px solid rgba(0,0,0,.15);
+    }
+    .org { font-weight: 600; }
+    .msg { margin-top: .25rem; font-size: 0.95rem; }
+    .meta { opacity: .75; font-size: .85rem; margin-top: .25rem; }
+    .map {
+      height: 220px; border-radius: 12px; margin-top: .75rem; overflow: hidden; border: 1px solid rgba(0,0,0,.08);
+    }
+    .empty { opacity: .6; padding: 2rem 1rem; text-align: center; }
   </style>
+
+  <script>
+    // Simple Auto-Reload alle 5 Sekunden
+    setInterval(() => {
+      // leichter: komplette Seite neu laden
+      location.reload();
+    }, 5000);
+  </script>
 </head>
 <body>
-  <header>
-    <h1>GroupAlarm – Alarme</h1>
-    <div class="headnav">
-      <a class="btn" href="{{ url_for('index') }}">Quick Actions</a>
-    </div>
-  </header>
-  <div class="wrap" id="wrap">
-    {% for org in orgs %}
-    <section class="org" id="org-{{ org.org_id }}">
-      <h2>
-        {% if org.avatar %}
-          <img src="{{ org.avatar }}" alt="" />
-        {% endif %}
-        {{ org.name }}
-      </h2>
+<header>
+  <a href="{{ url_for('index') }}" class="{{ 'active' if active_tab=='dashboard' else '' }}">Dashboard</a>
+  <a href="{{ url_for('alarms_page') }}" class="{{ 'active' if active_tab=='alarms' else '' }}">Alarme</a>
+</header>
 
-      {% if org.alarms|length == 0 %}
-        <div class="meta">Keine Alarme gefunden.</div>
-      {% else %}
-        <div class="alarms">
-          {% set latest = org.alarms[0] %}
-          <article class="alarm">
-            <div class="top">
-              <div class="pill">
-                {{ latest.event.severity.name or 'Alarm' }}
-                {% if latest.event.severity.level is not none %} · L{{ latest.event.severity.level }}{% endif %}
-              </div>
-              <div class="meta">{{ latest.startDate }}</div>
-            </div>
-            <p class="msg">{{ latest.message }}</p>
-            <div class="meta">
-              {{ latest.event.name }}{% if latest.optionalContent.address %} · {{ latest.optionalContent.address }}{% endif %}
-            </div>
-            {% if latest.optionalContent.latitude and latest.optionalContent.longitude %}
-            <div id="map-{{ org.org_id }}" class="map"></div>
-            {% endif %}
-          </article>
+<div class="page">
+  {% if not alarms or alarms|length == 0 %}
+    <div class="empty">Zur Zeit liegen keine Alarme vor.</div>
+  {% else %}
+    {% for a in alarms %}
+      <div class="alarm">
+        <div class="row">
+          <div class="sev-dot" style="background: {{ a.sev_color | e }};"></div>
+          <div class="org">{{ a.org_name }}</div>
+          {% if a.event_name %}
+            <div>•</div>
+            <div>{{ a.event_name }}</div>
+          {% endif %}
         </div>
-      {% endif %}
-    </section>
+        {% if a.message %}
+          <div class="msg">{{ a.message }}</div>
+        {% endif %}
+        <div class="meta">
+          Alarm #{{ a.id }} • Start: {{ a.startDate or '–' }}
+        </div>
+
+        {% if a.lat is not none and a.lon is not none %}
+          <div id="map-{{ a.id }}" class="map"></div>
+          <script>
+            (function(){
+              const lat = {{ a.lat }};
+              const lon = {{ a.lon }};
+              const map = L.map("map-{{ a.id }}").setView([lat, lon], 15);
+              L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; OpenStreetMap'
+              }).addTo(map);
+              L.marker([lat, lon]).addTo(map);
+            })();
+          </script>
+        {% endif %}
+      </div>
     {% endfor %}
-  </div>
-
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-  <script>
-    const REFRESH_MS = 5000;
-
-    function fmt(s){ try{ return new Date(s).toLocaleString(); }catch{ return s; } }
-
-    async function refresh() {
-      try {
-        const res = await fetch("{{ url_for('alarms_json') }}", {cache:"no-store"});
-        const data = await res.json();
-        const order = data.order || [];
-        const names = data.names || {};
-        const avatars = data.avatars || {};
-        const alarms = data.alarms || {};
-
-        order.forEach(orgId => {
-          const el = document.getElementById("org-"+orgId);
-          if(!el) return;
-          const list = (alarms[orgId] || []);
-          if(list.length === 0) {
-            el.querySelector(".alarms")?.replaceChildren();
-            const empty = document.createElement("div");
-            empty.className = "meta";
-            empty.textContent = "Keine Alarme gefunden.";
-            el.querySelector(".org")?.appendChild(empty);
-            return;
-          }
-          const latest = list[0];
-          const mapHost = el.querySelector("#map-"+orgId);
-          if(mapHost && latest.optionalContent?.latitude && latest.optionalContent?.longitude) {
-            if(!mapHost._leaflet_map){
-              const m = L.map(mapHost).setView([latest.optionalContent.latitude, latest.optionalContent.longitude], 14);
-              L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(m);
-              const marker = L.marker([latest.optionalContent.latitude, latest.optionalContent.longitude]).addTo(m);
-              marker.bindPopup((latest.event?.name || "Alarm") + (latest.optionalContent?.address ? "<br/>"+latest.optionalContent.address : ""));
-              mapHost._leaflet_map = m;
-              mapHost._leaflet_marker = marker;
-            } else {
-              mapHost._leaflet_map.setView([latest.optionalContent.latitude, latest.optionalContent.longitude], 14);
-              mapHost._leaflet_marker.setLatLng([latest.optionalContent.latitude, latest.optionalContent.longitude]);
-            }
-          }
-          const dateEl = el.querySelector(".alarm .top .meta");
-          if(dateEl && latest.startDate) dateEl.textContent = fmt(latest.startDate);
-
-          const msgEl = el.querySelector(".alarm .msg");
-          if(msgEl) msgEl.textContent = latest.message || "";
-        });
-      } catch(e) {
-      } finally {
-        setTimeout(refresh, REFRESH_MS);
-      }
-    }
-    setTimeout(refresh, REFRESH_MS);
-  </script>
+  {% endif %}
+</div>
 </body>
 </html>

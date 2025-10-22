@@ -1,142 +1,282 @@
 <!doctype html>
 <html lang="de">
+
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>GroupAlarm – Quick Actions</title>
-<style>
-  :root{
-    --bg:#07192f; --bg2:#041124;
-    --glass:#0d2b52cc; --glass2:#103460cc;
-    --edge:#1b4c8a; --edge2:#2e6dd1;
-    --accent:#2f7bf5; --accent2:#5a98ff;
-    --text:#e8f0ff; --muted:#b9c7e6; --chip:#0b2a52;
-    --glow:#2a7bf0aa;
-  }
-  *{box-sizing:border-box}
-  html,body{height:100%}
-  body{
-    margin:0; color:var(--text);
-    background:
-      radial-gradient(1200px 600px at 15% -10%, #0b2a55 0%, transparent 60%),
-      radial-gradient(900px 500px at 100% 0%, #072142 0%, transparent 60%),
-      linear-gradient(180deg,var(--bg),var(--bg2));
-    font:14px/1.45 Inter, system-ui, Segoe UI, Roboto, Arial, sans-serif;
-  }
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GroupAlarm – Quick Actions</title>
+  <style>
+    :root {
+      --bg: #07192f;
+      --bg2: #041124;
+      --glass: #0d2b52cc;
+      --glass2: #103460cc;
+      --edge: #1b4c8a;
+      --edge2: #2e6dd1;
+      --accent: #2f7bf5;
+      --accent2: #5a98ff;
+      --text: #e8f0ff;
+      --muted: #b9c7e6;
+      --chip: #0b2a52;
+      --glow: #2a7bf0aa;
+    }
 
-  /* header */
-  .bar{
-    position:sticky; top:0; z-index:5;
-    backdrop-filter: blur(10px);
-    background: linear-gradient(180deg,#0a1f3dbf,#081a31a0);
-    border-bottom:1px solid #0f2f5a;
-    padding:12px 18px;
-    display:flex; align-items:center; gap:12px;
-  }
-  .logo{
-    width:28px;height:28px;border-radius:8px;
-    background:linear-gradient(145deg,#1e3f74,#2f6bd3);
-    box-shadow: 0 0 0 1px #2a67c3, 0 6px 18px #0b2a5577, inset 0 1px 0 #ffffff22;
-  }
-  h1{margin:0;font-size:18px;letter-spacing:.2px;font-weight:650}
+    * {
+      box-sizing: border-box
+    }
 
-  /* layout */
-  .wrap{max-width:1180px;margin:18px auto;padding:0 18px}
-  .grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
+    html,
+    body {
+      height: 100%
+    }
 
-  /* card */
-  .card{
-    position:relative;
-    background:linear-gradient(180deg,var(--glass),var(--glass2));
-    border:1px solid var(--edge);
-    border-radius:18px; padding:14px 14px 10px;
-    box-shadow:0 10px 30px #0008, 0 0 0 1px #0b2a55 inset;
-    transition:transform .06s ease, box-shadow .16s ease, border-color .16s ease;
-  }
-  .card:hover{transform:translateY(-1px);border-color:#2a67c3;box-shadow:0 12px 34px #000a, 0 0 0 1px #1a4e86 inset;}
+    body {
+      margin: 0;
+      color: var(--text);
+      background:
+        radial-gradient(1200px 600px at 15% -10%, #0b2a55 0%, transparent 60%),
+        radial-gradient(900px 500px at 100% 0%, #072142 0%, transparent 60%),
+        linear-gradient(180deg, var(--bg), var(--bg2));
+      font: 14px/1.45 Inter, system-ui, Segoe UI, Roboto, Arial, sans-serif;
+    }
 
-  .org{
-    display:flex;align-items:center;gap:10px;margin-bottom:10px
-  }
-  .avatar{
-    width:34px;height:34px;border-radius:50%;flex:0 0 34px;object-fit:cover;
-    background:#0f3a64;border:1px solid #1b4e86;box-shadow:0 1px 0 #0007,inset 0 0 0 2px #0002;
-  }
-  .org-name{font-weight:700;letter-spacing:.2px}
+    /* header */
+    .bar {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      backdrop-filter: blur(10px);
+      background: linear-gradient(180deg, #0a1f3dbf, #081a31a0);
+      border-bottom: 1px solid #0f2f5a;
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
 
-  .actions{display:grid;gap:8px}
-  .btn{
-    width:100%;display:flex;justify-content:space-between;align-items:center;
-    padding:10px 12px;border-radius:12px;cursor:pointer;
-    border:1px solid #1d4e8f;
-    background:linear-gradient(180deg,var(--accent),var(--accent2));
-    color:#fff; font-weight:600;
-    box-shadow: 0 8px 18px var(--glow), inset 0 1px 0 #ffffff22;
-    transition:filter .12s ease, transform .04s ease, box-shadow .12s ease, border-color .12s ease;
-  }
-  .btn:hover{filter:brightness(1.06); box-shadow:0 10px 22px var(--glow); border-color:#3276eb;}
-  .btn:active{transform:translateY(1px)}
+    .logo {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: linear-gradient(145deg, #1e3f74, #2f6bd3);
+      box-shadow: 0 0 0 1px #2a67c3, 0 6px 18px #0b2a5577, inset 0 1px 0 #ffffff22;
+    }
 
-  .chip{
-    font-size:12px; padding:2px 8px; border-radius:999px;
-    background:linear-gradient(180deg,#0f2f5a,#0c294f);
-    border:1px solid #1a4a82; color:var(--text); opacity:.95;
-  }
+    h1 {
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: .2px;
+      font-weight: 650
+    }
 
-  .empty{
-    margin-top:4px;padding:12px;border-radius:12px;
-    border:1px dashed #1a406e;color:var(--muted);
-    background:#0b2a4a88;
-  }
+    /* layout */
+    .wrap {
+      max-width: 1180px;
+      margin: 18px auto;
+      padding: 0 18px
+    }
 
-  /* toast */
-  .toast{
-    position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(16px);
-    background:linear-gradient(180deg,#10335f,#0e2b52);
-    border:1px solid #2a67c3;color:var(--text);padding:10px 14px;border-radius:12px;
-    box-shadow:0 10px 26px #0009, 0 0 0 1px #0b2a55 inset; opacity:0; pointer-events:none;
-    transition:opacity .18s ease, transform .18s ease;
-  }
-  .toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
-</style>
+    .grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr))
+    }
+
+    /* card */
+    .card {
+      position: relative;
+      background: linear-gradient(180deg, var(--glass), var(--glass2));
+      border: 1px solid var(--edge);
+      border-radius: 18px;
+      padding: 14px 14px 10px;
+      box-shadow: 0 10px 30px #0008, 0 0 0 1px #0b2a55 inset;
+      transition: transform .06s ease, box-shadow .16s ease, border-color .16s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-1px);
+      border-color: #2a67c3;
+      box-shadow: 0 12px 34px #000a, 0 0 0 1px #1a4e86 inset;
+    }
+
+    .org {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px
+    }
+
+    .avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      flex: 0 0 34px;
+      object-fit: cover;
+      background: #0f3a64;
+      border: 1px solid #1b4e86;
+      box-shadow: 0 1px 0 #0007, inset 0 0 0 2px #0002;
+    }
+
+    .org-name {
+      font-weight: 700;
+      letter-spacing: .2px
+    }
+
+    .actions {
+      display: grid;
+      gap: 8px
+    }
+
+    .btn {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 12px;
+      border-radius: 12px;
+      cursor: pointer;
+      border: 1px solid #1d4e8f;
+      background: linear-gradient(180deg, var(--accent), var(--accent2));
+      color: #fff;
+      font-weight: 600;
+      box-shadow: 0 8px 18px var(--glow), inset 0 1px 0 #ffffff22;
+      transition: filter .12s ease, transform .04s ease, box-shadow .12s ease, border-color .12s ease;
+    }
+
+    .btn:hover {
+      filter: brightness(1.06);
+      box-shadow: 0 10px 22px var(--glow);
+      border-color: #3276eb;
+    }
+
+    .btn:active {
+      transform: translateY(1px)
+    }
+
+    .chip {
+      font-size: 12px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: linear-gradient(180deg, #0f2f5a, #0c294f);
+      border: 1px solid #1a4a82;
+      color: var(--text);
+      opacity: .95;
+    }
+
+    .empty {
+      margin-top: 4px;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px dashed #1a406e;
+      color: var(--muted);
+      background: #0b2a4a88;
+    }
+
+    /* toast */
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 22px;
+      transform: translateX(-50%) translateY(16px);
+      background: linear-gradient(180deg, #10335f, #0e2b52);
+      border: 1px solid #2a67c3;
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 12px;
+      box-shadow: 0 10px 26px #0009, 0 0 0 1px #0b2a55 inset;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .18s ease, transform .18s ease;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0)
+    }
+
+    .nav {
+      margin-left: auto;
+      display: flex;
+      gap: 8px;
+    }
+
+    .tab {
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+      padding: 8px 12px;
+      border-radius: 10px;
+      text-decoration: none;
+      color: var(--text);
+      font-weight: 600;
+      letter-spacing: .1px;
+      background: linear-gradient(180deg, #0e2646, #0b2040);
+      border: 1px solid #123d73;
+      box-shadow: inset 0 1px 0 #ffffff22, 0 6px 16px #0005;
+      transition: filter .12s ease, transform .04s ease, border-color .12s ease;
+    }
+
+    .tab:hover {
+      filter: brightness(1.06);
+      border-color: #1b4e86;
+    }
+
+    .tab:active {
+      transform: translateY(1px);
+    }
+
+    .tab.active {
+      background: linear-gradient(180deg, var(--accent), var(--accent2));
+      border-color: #2e6dd1;
+      color: #fff;
+      box-shadow: 0 8px 18px var(--glow), inset 0 1px 0 #ffffff22;
+    }
+  </style>
 </head>
+
 <body>
   <div class="bar">
     <div class="logo" aria-hidden="true"></div>
     <h1>GroupAlarm – Quick Actions</h1>
+
+    <nav class="nav">
+      <a href="{{ url_for('index') }}" class="tab {% if active_tab=='dashboard' %}active{% endif %}">Dashboard</a>
+      <a href="{{ url_for('alarms_page') }}" class="tab {% if active_tab=='alarms' %}active{% endif %}">Alarme</a>
+    </nav>
   </div>
+
 
   <div class="wrap">
     {% if orgs|length == 0 %}
-      <div class="empty">Keine Quick Actions im Cache. Warte auf den nächsten Poll…</div>
+    <div class="empty">Keine Quick Actions im Cache. Warte auf den nächsten Poll…</div>
     {% else %}
-      <div class="grid">
-        {% for org in orgs %}
-          <div class="card">
-            <div class="org">
-              {% if org.avatar %}
-                <img class="avatar" src="{{ org.avatar }}" alt="Avatar {{ org.name }}" />
-              {% else %}
-                <div class="avatar"></div>
-              {% endif %}
-              <div class="org-name">{{ org.name }}</div>
-            </div>
+    <div class="grid">
+      {% for org in orgs %}
+      <div class="card">
+        <div class="org">
+          {% if org.avatar %}
+          <img class="avatar" src="{{ org.avatar }}" alt="Avatar {{ org.name }}" />
+          {% else %}
+          <div class="avatar"></div>
+          {% endif %}
+          <div class="org-name">{{ org.name }}</div>
+        </div>
 
-            {% if org.actions and org.actions|length > 0 %}
-              <div class="actions">
-                {% for qa in org.actions %}
-                  <button class="btn" onclick="press({{ org.id }}, {{ qa.id }}, '{{ qa.name|e }}')">
-                    <span>{{ qa.name }}</span>
-                    {% if qa.category %}<span class="chip">{{ qa.category }}</span>{% endif %}
-                  </button>
-                {% endfor %}
-              </div>
-            {% else %}
-              <div class="empty">Keine Quick Actions.</div>
-            {% endif %}
-          </div>
-        {% endfor %}
+        {% if org.actions and org.actions|length > 0 %}
+        <div class="actions">
+          {% for qa in org.actions %}
+          <button class="btn" onclick="press({{ org.id }}, {{ qa.id }}, '{{ qa.name|e }}')">
+            <span>{{ qa.name }}</span>
+            {% if qa.category %}<span class="chip">{{ qa.category }}</span>{% endif %}
+          </button>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty">Keine Quick Actions.</div>
+        {% endif %}
       </div>
+      {% endfor %}
+    </div>
     {% endif %}
   </div>
 
@@ -145,22 +285,23 @@
   <script>
     const toastEl = document.getElementById('toast');
     let toastTimer = null;
-    function showToast(msg){
+    function showToast(msg) {
       toastEl.textContent = msg;
       toastEl.classList.add('show');
       clearTimeout(toastTimer);
-      toastTimer = setTimeout(()=>toastEl.classList.remove('show'), 1800);
+      toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1800);
     }
 
-    async function press(orgId, qaId, qaName){
-      try{
+    async function press(orgId, qaId, qaName) {
+      try {
         const res = await fetch(`./press/${orgId}/${qaId}`, { method: 'POST' });
-        if(!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         showToast(`„${qaName}“ ausgelöst`);
-      }catch(e){
+      } catch (e) {
         showToast(`Fehler: ${e.message}`);
       }
     }
   </script>
 </body>
+
 </html>
