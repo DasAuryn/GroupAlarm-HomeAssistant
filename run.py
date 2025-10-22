@@ -279,6 +279,7 @@ def discovery_quick_action_button(org_id: int, org_name: str, qa: dict):
             "model": "REST Bridge",
         },
         "icon": icon,
+        "entity_category": "config",
         "command_topic": cmd_topic,
         "payload_press": "PRESS",
     }, retain=True)
