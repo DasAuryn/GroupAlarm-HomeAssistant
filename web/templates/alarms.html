@@ -1,202 +1,173 @@
 <!doctype html>
 <html lang="de">
-
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>GroupAlarm – Alarme</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <style>
-        .map {
-            height: 220px;
-            border-radius: 12px;
-            overflow: hidden;
-            margin-top: 8px;
-        }
-    </style>
-    <style>
-        body {
-            margin: 0;
-            font: 14px/1.45 Inter, system-ui, Segoe UI, Roboto, Arial, sans-serif;
-            background: #07192f;
-            color: #e8f0ff
-        }
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>GroupAlarm – Alarme</title>
 
-        header {
-            position: sticky;
-            top: 0;
-            padding: 12px 18px;
-            background: #0a1f3dbf;
-            border-bottom: 1px solid #0f2f5a;
-            backdrop-filter: blur(10px)
-        }
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-        header a {
-            color: #e8f0ff;
-            text-decoration: none;
-            margin-right: 12px;
-            opacity: .8
-        }
+  <style>
+    :root{
+      --bg:#07192f; --bg2:#041124;
+      --glass:#0d2b52cc; --glass2:#103460cc;
+      --edge:#1b4c8a; --edge2:#2e6dd1;
+      --accent:#2f7bf5; --accent2:#5a98ff;
+      --text:#e8f0ff; --muted:#b9c7e6; --chip:#0b2a52;
+      --glow:#2a7bf0aa;
+    }
+    *{ box-sizing:border-box }
+    html, body{ height:100% }
+    body{
+      margin:0; color:var(--text);
+      background:
+        radial-gradient(1200px 600px at 15% -10%, #0b2a55 0%, transparent 60%),
+        radial-gradient(900px 500px at 100% 0%, #072142 0%, transparent 60%),
+        linear-gradient(180deg,var(--bg),var(--bg2));
+      font:14px/1.45 Inter, system-ui, Segoe UI, Roboto, Arial, sans-serif;
+    }
 
-        header a.active {
-            opacity: 1;
-            font-weight: 700
-        }
+    .bar{
+      position:sticky; top:0; z-index:5;
+      backdrop-filter: blur(10px);
+      background: linear-gradient(180deg,#0a1f3dbf,#081a31a0);
+      border-bottom:1px solid #0f2f5a;
+      padding:12px 18px;
+      display:flex; align-items:center; gap:12px;
+    }
+    .logo{
+      width:28px;height:28px;border-radius:8px;
+      background:linear-gradient(145deg,#1e3f74,#2f6bd3);
+      box-shadow: 0 0 0 1px #2a67c3, 0 6px 18px #0b2a5577, inset 0 1px 0 #ffffff22;
+      flex:0 0 28px;
+    }
+    h1{ margin:0; font-size:18px; letter-spacing:.2px; font-weight:650 }
+    .nav{ margin-left:auto; display:flex; gap:8px }
+    .tab{
+      display:inline-flex; align-items:center; gap:.4rem;
+      padding:8px 12px; border-radius:10px; text-decoration:none;
+      color:var(--text); font-weight:600; letter-spacing:.1px;
+      background:linear-gradient(180deg,#0e2646,#0b2040);
+      border:1px solid #123d73;
+      box-shadow: inset 0 1px 0 #ffffff22, 0 6px 16px #0005;
+      transition: filter .12s ease, transform .04s ease, border-color .12s ease;
+    }
+    .tab:hover{ filter:brightness(1.06); border-color:#1b4e86 }
+    .tab:active{ transform:translateY(1px) }
+    .tab.active{
+      background:linear-gradient(180deg,var(--accent),var(--accent2));
+      border-color:#2e6dd1; color:#fff;
+      box-shadow:0 8px 18px var(--glow), inset 0 1px 0 #ffffff22;
+    }
 
-        .wrap {
-            max-width: 960px;
-            margin: 18px auto;
-            padding: 0 18px
-        }
+    .wrap{ max-width:1180px; margin:18px auto; padding:0 18px }
 
-        .card {
-            background: #0d2b52cc;
-            border: 1px solid #1b4c8a;
-            border-radius: 14px;
-            padding: 12px;
-            margin-bottom: 14px
-        }
+    .card{
+      position:relative;
+      background:linear-gradient(180deg,var(--glass),var(--glass2));
+      border:1px solid var(--edge);
+      border-radius:18px; padding:14px;
+      box-shadow:0 10px 30px #0008, 0 0 0 1px #0b2a55 inset;
+      transition:transform .06s ease, box-shadow .16s ease, border-color .16s ease;
+      margin-bottom:16px;
+    }
+    .card:hover{ transform:translateY(-1px); border-color:#2a67c3; box-shadow:0 12px 34px #000a, 0 0 0 1px #1a4e86 inset }
 
-        .org {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 8px
-        }
+    .org{ display:flex; align-items:center; gap:10px; margin-bottom:10px }
+    .avatar{
+      width:34px;height:34px;border-radius:50%;flex:0 0 34px;object-fit:cover;
+      background:#0f3a64;border:1px solid #1b4e86;box-shadow:0 1px 0 #0007,inset 0 0 0 2px #0002;
+    }
+    .org-name{ font-weight:700; letter-spacing:.2px }
 
-        .avatar {
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            object-fit: cover;
-            background: #0f3a64;
-            border: 1px solid #1b4e86
-        }
+    .alarm{
+      padding:10px; border-radius:12px;
+      border:1px solid #1a4e86; background:#0b2a4a88; margin:8px 0;
+    }
+    .row{ display:flex; gap:8px; flex-wrap:wrap }
+    .chip{
+      font-size:12px; padding:2px 8px; border-radius:999px;
+      background:linear-gradient(180deg,#0f2f5a,#0c294f);
+      border:1px solid #1a4a82; color:var(--text); opacity:.95;
+    }
+    .muted{ color:var(--muted) }
+    .empty{
+      margin-top:4px; padding:12px; border-radius:12px;
+      border:1px dashed #1a406e; color:var(--muted); background:#0b2a4a88;
+    }
 
-        .muted {
-            color: #b9c7e6
-        }
-
-        .alarm {
-            padding: 10px;
-            border-radius: 12px;
-            border: 1px solid #1a4e86;
-            background: #0b2a4a88;
-            margin: 8px 0
-        }
-
-        .row {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap
-        }
-
-        .chip {
-            font-size: 12px;
-            padding: 2px 8px;
-            border-radius: 999px;
-            border: 1px solid #1a4e86;
-            background: #0f2f5a
-        }
-
-        .nav {
-            margin-left: auto;
-            display: flex;
-            gap: 8px;
-        }
-
-        .tab {
-            display: inline-flex;
-            align-items: center;
-            gap: .4rem;
-            padding: 8px 12px;
-            border-radius: 10px;
-            text-decoration: none;
-            color: var(--text);
-            font-weight: 600;
-            letter-spacing: .1px;
-            background: linear-gradient(180deg, #0e2646, #0b2040);
-            border: 1px solid #123d73;
-            box-shadow: inset 0 1px 0 #ffffff22, 0 6px 16px #0005;
-            transition: filter .12s ease, transform .04s ease, border-color .12s ease;
-        }
-
-        .tab:hover {
-            filter: brightness(1.06);
-            border-color: #1b4e86;
-        }
-
-        .tab:active {
-            transform: translateY(1px);
-        }
-
-        .tab.active {
-            background: linear-gradient(180deg, var(--accent), var(--accent2));
-            border-color: #2e6dd1;
-            color: #fff;
-            box-shadow: 0 8px 18px var(--glow), inset 0 1px 0 #ffffff22;
-        }
-    </style>
+    .map{
+      height:220px; border-radius:12px; overflow:hidden; margin-top:8px;
+      box-shadow: inset 0 0 0 1px #0b2a55;
+    }
+  </style>
 </head>
-
 <body>
-    <header>
-        <a href="./dashboard" class="tab {% if active_tab=='dashboard' %}active{% endif %}">Dashboard</a>
-        <a href="./" class="tab {% if active_tab=='alarms' %}active{% endif %}">Alarme</a>
-    </header>
+  <div class="bar">
+    <div class="logo" aria-hidden="true"></div>
+    <h1>GroupAlarm – Alarme</h1>
+    <nav class="nav">
+      <a href="./"          class="tab {% if active_tab=='alarms' %}active{% endif %}">Alarme</a>
+      <a href="./dashboard" class="tab {% if active_tab=='dashboard' %}active{% endif %}">Dashboard</a>
+    </nav>
+  </div>
 
-    <div class="wrap">
-        {% if orgs|length == 0 %}
-        <div class="card muted">Keine Alarme gefunden.</div>
-        {% endif %}
+  <div class="wrap">
+    {% if orgs|length == 0 %}
+      <div class="card muted">Keine Alarme gefunden.</div>
+    {% endif %}
 
-        {% for org in orgs %}
-        <div class="card">
-            <div class="org">
-                {% if org.avatar %}<img class="avatar" src="{{ org.avatar }}" alt="" />{% else %}<div class="avatar">
-                </div>{% endif %}
-                <div><strong>{{ org.name }}</strong></div>
-            </div>
-
-            {% if org.alarms and org.alarms|length > 0 %}
-            {% for a in org.alarms %}
-            <div class="alarm">
-                <div class="row">
-                    <div class="chip">ID: {{ a.id }}</div>
-                    {% if a.event and a.event.name %}<div class="chip">{{ a.event.name }}</div>{% endif %}
-                    {% if a.startDate %}<div class="chip">{{ a.startDate }}</div>{% endif %}
-                </div>
-                {% if a.message %}<div style="margin-top:6px">{{ a.message }}</div>{% endif %}
-                {% if a.optionalContent and (a.optionalContent.address or a.optionalContent.latitude) %}
-                <div class="muted" style="margin-top:6px">
-                    {% if a.optionalContent and a.optionalContent.latitude %}
-                    <div id="map-{{ org.id }}-{{ a.id }}" class="map" data-lat="{{ a.optionalContent.latitude }}"
-                        data-lon="{{ a.optionalContent.longitude }}"></div>
-                    {% endif %}
-                </div>
-                {% endif %}
-            </div>
-            {% endfor %}
-            {% else %}
-            <div class="muted">Keine Alarme.</div>
-            {% endif %}
+    {% for org in orgs %}
+      <div class="card">
+        <div class="org">
+          {% if org.avatar %}<img class="avatar" src="{{ org.avatar }}" alt="" />{% else %}<div class="avatar"></div>{% endif %}
+          <div class="org-name">{{ org.name }}</div>
         </div>
-        {% endfor %}
-    </div>
-    <script>
-        document.querySelectorAll('.map[data-lat][data-lon]').forEach(el => {
-            const lat = parseFloat(el.getAttribute('data-lat'));
-            const lon = parseFloat(el.getAttribute('data-lon'));
-            const map = L.map(el).setView([lat, lon], 15);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                attribution: '&copy; OpenStreetMap'
-            }).addTo(map);
-            L.marker([lat, lon]).addTo(map);
-            setTimeout(() => map.invalidateSize(), 250);
-        });
-    </script>
-</body>
 
+        {% if org.alarms and org.alarms|length > 0 %}
+          {% for a in org.alarms %}
+            <div class="alarm">
+              <div class="row">
+                <div class="chip">ID: {{ a.id }}</div>
+                {% if a.event and a.event.name %}<div class="chip">{{ a.event.name }}</div>{% endif %}
+                {% if a.startDate %}<div class="chip">{{ a.startDate }}</div>{% endif %}
+              </div>
+
+              {% if a.message %}<div style="margin-top:6px">{{ a.message }}</div>{% endif %}
+
+              {% if a.optionalContent and (a.optionalContent.latitude or a.optionalContent.address) %}
+                <div class="muted" style="margin-top:6px">
+                  {% if a.optionalContent.address %}{{ a.optionalContent.address }}{% endif %}
+                  {% if a.optionalContent.latitude %}
+                    <div id="map-{{ org.id }}-{{ a.id }}"
+                         class="map"
+                         data-lat="{{ a.optionalContent.latitude }}"
+                         data-lon="{{ a.optionalContent.longitude }}"></div>
+                  {% endif %}
+                </div>
+              {% endif %}
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="empty">Keine Alarme.</div>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
+
+  <script>
+    document.querySelectorAll('.map[data-lat][data-lon]').forEach(el => {
+      const lat = parseFloat(el.getAttribute('data-lat'));
+      const lon = parseFloat(el.getAttribute('data-lon'));
+      const map = L.map(el).setView([lat, lon], 15);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap'
+      }).addTo(map);
+      L.marker([lat, lon]).addTo(map);
+      setTimeout(() => map.invalidateSize(), 250);
+    });
+  </script>
+</body>
 </html>
