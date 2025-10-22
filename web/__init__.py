@@ -90,11 +90,11 @@ def dashboard():
 @app.get("/alarms")
 def alarms_page():
     ui = load_ui_cache() or {}
-    names_raw   = ui.get("names", {})   
-    avatars_raw = ui.get("avatars", {})   
+    names_raw   = ui.get("names", {})    
+    avatars_raw = ui.get("avatars", {})  
 
     alarms_data = load_alarms_cache() or {}
-    by_org_raw  = alarms_data.get("by_org", {})  
+    by_org_raw  = alarms_data.get("by_org", {}) 
 
     def to_int_keys(d):
         out = {}
@@ -114,6 +114,21 @@ def alarms_page():
     for k, v in ORG_NAMES.items():
         names.setdefault(k, v)
 
+    missing = [oid for oid in by_org.keys() if oid not in names]
+    if missing:
+        try:
+            orgs = http("GET", "/organizations")
+            if isinstance(orgs, list):
+                for o in orgs:
+                    if isinstance(o, dict) and "id" in o:
+                        oid = int(o["id"])
+                        if oid in by_org and oid not in names:
+                            names[oid] = o.get("name", f"Org {oid}")
+                        if oid not in avatars:
+                            avatars[oid] = o.get("avatarURL") or ""
+        except Exception:
+            pass  
+
     order = [oid for oid, lst in by_org.items() if lst] or sorted(by_org.keys())
 
     items = []
@@ -126,6 +141,7 @@ def alarms_page():
         })
 
     return render_template("alarms.html", orgs=items, active_tab="alarms")
+
 
 
 @app.post("/press/<int:org_id>/<int:qa_id>")
