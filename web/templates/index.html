@@ -284,30 +284,33 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script>
-    const toastEl = document.getElementById('toast');
-    let toastTimer = null;
+ <script>
+  const toastEl = document.getElementById('toast');
+  let toastTimer = null;
+  function showToast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=>toastEl.classList.remove('show'), 1800);
+  }
 
-    function showToast(msg) {
-      toastEl.textContent = msg;
-      toastEl.classList.add('show');
-      clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1800);
-    }
+  const PRESS_TEMPLATE = "{{ url_for('press', org_id=111, qa_id=222) }}";
 
-    const PRESS_TEMPLATE = "{{ url_for('press', org_id=111, qa_id=222) }}";
-
-    async function press(orgId, qaId, qaName) {
-      try {
-        const pressUrl = PRESS_TEMPLATE.replace('111', String(orgId)).replace('222', String(qaId));
-        const res = await fetch(pressUrl, { method: 'POST' });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        showToast(`„${qaName}“ ausgelöst`);
-      } catch (e) {
-        showToast(`Fehler: ${e.message}`);
+  async function press(orgId, qaId, qaName){
+    try{
+      const pressUrl = PRESS_TEMPLATE.replace('111', String(orgId)).replace('222', String(qaId));
+      const res = await fetch(pressUrl, { method: 'POST' });
+      if(!res.ok){
+        const t = await res.text().catch(()=> '');
+        throw new Error(`HTTP ${res.status}${t ? ' – '+t : ''}`);
       }
+      showToast(`„${qaName}“ ausgelöst`);
+    }catch(e){
+      showToast(`Fehler: ${e.message}`);
     }
-  </script>
+  }
+</script>
+
 
 </body>
 
