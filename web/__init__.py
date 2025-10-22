@@ -90,11 +90,20 @@ def dashboard():
 @app.get("/alarms")
 def alarms_page():
     ui = load_ui_cache() or {}
-    names = ui.get("names", {})
-    avatars = ui.get("avatars", {})
+    names_raw   = ui.get("names", {})    
+    
+    avatars_raw = ui.get("avatars", {})  
 
     alarms_data = load_alarms_cache() or {}
-    by_org = alarms_data.get("by_org", {})
+    by_org_raw = alarms_data.get("by_org", {})  
+
+    def to_int_keys(d):
+        return {int(k): v for k, v in (d or {}).items()}
+
+    names   = to_int_keys(names_raw)
+    avatars = to_int_keys(avatars_raw)
+    by_org  = to_int_keys(by_org_raw)
+
     order = [oid for oid, lst in by_org.items() if lst] or sorted(by_org.keys())
 
     items = []
@@ -106,6 +115,7 @@ def alarms_page():
             "alarms": by_org.get(oid, []),
         })
     return render_template("alarms.html", orgs=items, active_tab="alarms")
+
 
 @app.post("/press/<int:org_id>/<int:qa_id>")
 def press(org_id: int, qa_id: int):
