@@ -239,10 +239,11 @@
     <div class="logo" aria-hidden="true"></div>
     <h1>GroupAlarm – Quick Actions</h1>
 
-    <nav class="nav">
-      <a href="{{ url_for('index') }}" class="tab {% if active_tab=='dashboard' %}active{% endif %}">Dashboard</a>
-      <a href="{{ url_for('alarms_page') }}" class="tab {% if active_tab=='alarms' %}active{% endif %}">Alarme</a>
-    </nav>
+    <header>
+      <a href="./" class="{% if active_tab=='dashboard' %}active{% endif %}">Dashboard</a>
+      <a href="./alarms" class="{% if active_tab=='alarms' %}active{% endif %}">Alarme</a>
+    </header>
+
 
   </div>
 

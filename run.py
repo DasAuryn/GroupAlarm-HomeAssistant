@@ -2,6 +2,7 @@
 import os, sys, json, time, pathlib, importlib.util
 from typing import Dict, Any, List
 import threading
+from run_state import save_alarms_cache
 
 sys.path.insert(0, os.path.dirname(__file__) or "/")
 try:
@@ -332,11 +333,9 @@ def refresh_alarms_for_all_orgs():
         alarms_by_org[oid] = fetch_org_alarms(oid)
 
     try:
-        save_ui_cache(alarms_by_org=alarms_by_org)
-        print(json.dumps({
-            "alarms_cache": "updated",
-            "counts": {str(k): len(v or []) for k, v in alarms_by_org.items()}
-        }, ensure_ascii=False), flush=True)
+       save_alarms_cache(by_org=alarms_by_org)
+       print(json.dumps({"alarms_cache": "updated",
+                          "counts": {str(k): len(v) for k, v in alarms_by_org.items()}}, ensure_ascii=False), flush=True)
     except Exception as e:
         print(json.dumps({"alarms_cache_error": str(e)}), flush=True)
 
