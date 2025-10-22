@@ -4,7 +4,7 @@ import requests
 from flask import Flask, render_template, redirect, url_for, jsonify
 import json, hashlib
 
-from run_state import load_ui_cache, load_alarms_cache
+from run_state import load_ui_cache, load_alarms_cache, ORG_NAMES
 
 API_BASE    = os.environ.get("API_BASE_URL", "").rstrip("/")
 TOKEN       = os.environ.get("TOKEN", "")
@@ -90,19 +90,29 @@ def dashboard():
 @app.get("/alarms")
 def alarms_page():
     ui = load_ui_cache() or {}
-    names_raw   = ui.get("names", {})    
-    
-    avatars_raw = ui.get("avatars", {})  
+    names_raw   = ui.get("names", {})   
+    avatars_raw = ui.get("avatars", {})   
 
     alarms_data = load_alarms_cache() or {}
-    by_org_raw = alarms_data.get("by_org", {})  
+    by_org_raw  = alarms_data.get("by_org", {})  
 
     def to_int_keys(d):
-        return {int(k): v for k, v in (d or {}).items()}
+        out = {}
+        if not d:
+            return out
+        for k, v in d.items():
+            try:
+                out[int(k)] = v
+            except (ValueError, TypeError):
+                out[k] = v
+        return out
 
     names   = to_int_keys(names_raw)
     avatars = to_int_keys(avatars_raw)
     by_org  = to_int_keys(by_org_raw)
+
+    for k, v in ORG_NAMES.items():
+        names.setdefault(k, v)
 
     order = [oid for oid, lst in by_org.items() if lst] or sorted(by_org.keys())
 
@@ -114,6 +124,7 @@ def alarms_page():
             "avatar": avatars.get(oid, ""),
             "alarms": by_org.get(oid, []),
         })
+
     return render_template("alarms.html", orgs=items, active_tab="alarms")
 
 
