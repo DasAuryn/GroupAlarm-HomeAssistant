@@ -36,7 +36,7 @@ DEVICE_NAME = os.environ.get("DEVICE_NAME", "GroupAlarm Bridge")
 DEVICE_ID   = os.environ.get("DEVICE_ID", "groupalarm_bridge_1")
 ALARM_POLL_SEC = int(os.environ.get("ALARM_POLL_SEC", "5"))
 LAST_ALARM_IDS = {}
-ALARM_RESET_SECONDS = int(os.environ.get("ALARM_RESET_SECONDS", "60"))
+ALARM_RESET_SECONDS = int(os.environ.get("ALARM_RESET_SECONDS", "5"))
 _last_alarm_published: dict[int, dict] = {}  # {org_id: {"id": int, "ts": epoch}}
 
 

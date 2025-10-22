@@ -1,12 +1,11 @@
 # web/__init__.py
-from flask import Flask, render_template
-from run_state import load_ui_cache, load_alarms_cache
+from flask import Flask, render_template, redirect, url_for, jsonify
+from run_state import load_ui_cache, load_alarms_cache, trigger_quick_action
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 
 @app.get("/")
 def index():
-    # Standard: direkt Alarme rendern, KEIN redirect!
     ui      = load_ui_cache() or {}
     names   = ui.get("names", {})
     avatars = ui.get("avatars", {})
@@ -38,3 +37,11 @@ def dashboard_page():
         "actions": actions.get(oid, []),
     } for oid in order]
     return render_template("index.html", orgs=orgs, active_tab="dashboard")
+
+@app.post("/press/<int:org_id>/<int:qa_id>")
+def press(org_id, qa_id):
+    try:
+        ok, detail = trigger_quick_action(org_id, qa_id)
+        return jsonify({"ok": ok, "detail": detail}), (200 if ok else 500)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
