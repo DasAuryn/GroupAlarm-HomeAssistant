@@ -1,106 +1,64 @@
-<!-- web/templates/alarms.html -->
 <!doctype html>
 <html lang="de">
 <head>
-  <meta charset="utf-8" />
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>GroupAlarm – Alarme</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-
-  <!-- Leaflet von CDN (funktioniert in der Regel via Ingress) -->
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-    crossorigin=""
-  />
-  <script
-    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-    crossorigin=""
-  ></script>
-
   <style>
-    :root { color-scheme: light dark; }
-    body { margin: 0; font: 14px system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
-    header {
-      display:flex; gap:.5rem; align-items:center; padding: .75rem 1rem;
-      border-bottom: 1px solid rgba(0,0,0,.1);
-      position: sticky; top: 0; background: var(--ha-card-background, #fff); z-index: 10;
-    }
-    header a { text-decoration: none; color: inherit; padding: .4rem .6rem; border-radius: .5rem; }
-    header a.active { background: rgba(0,0,0,.06); }
-    .page { padding: 1rem; max-width: 1100px; margin: 0 auto; }
-    .alarm {
-      border: 1px solid rgba(0,0,0,.1); border-radius: 14px; padding: .9rem; margin: .8rem 0;
-      background: var(--ha-card-background, #fff); box-shadow: 0 1px 6px rgba(0,0,0,.05);
-    }
-    .row { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
-    .sev-dot {
-      width: .8rem; height: .8rem; border-radius: 50%;
-      border: 1px solid rgba(0,0,0,.15);
-    }
-    .org { font-weight: 600; }
-    .msg { margin-top: .25rem; font-size: 0.95rem; }
-    .meta { opacity: .75; font-size: .85rem; margin-top: .25rem; }
-    .map {
-      height: 220px; border-radius: 12px; margin-top: .75rem; overflow: hidden; border: 1px solid rgba(0,0,0,.08);
-    }
-    .empty { opacity: .6; padding: 2rem 1rem; text-align: center; }
+    body{margin:0;font:14px/1.45 Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;background:#07192f;color:#e8f0ff}
+    header{position:sticky;top:0;padding:12px 18px;background:#0a1f3dbf;border-bottom:1px solid #0f2f5a;backdrop-filter:blur(10px)}
+    header a{color:#e8f0ff;text-decoration:none;margin-right:12px;opacity:.8}
+    header a.active{opacity:1;font-weight:700}
+    .wrap{max-width:960px;margin:18px auto;padding:0 18px}
+    .card{background:#0d2b52cc;border:1px solid #1b4c8a;border-radius:14px;padding:12px;margin-bottom:14px}
+    .org{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+    .avatar{width:28px;height:28px;border-radius:50%;object-fit:cover;background:#0f3a64;border:1px solid #1b4e86}
+    .muted{color:#b9c7e6}
+    .alarm{padding:10px;border-radius:12px;border:1px solid #1a4e86;background:#0b2a4a88;margin:8px 0}
+    .row{display:flex;gap:8px;flex-wrap:wrap}
+    .chip{font-size:12px;padding:2px 8px;border-radius:999px;border:1px solid #1a4e86;background:#0f2f5a}
   </style>
-
-  <script>
-    // Simple Auto-Reload alle 5 Sekunden
-    setInterval(() => {
-      // leichter: komplette Seite neu laden
-      location.reload();
-    }, 5000);
-  </script>
 </head>
 <body>
-<header>
-  <a href="{{ url_for('index') }}" class="{{ 'active' if active_tab=='dashboard' else '' }}">Dashboard</a>
-  <a href="{{ url_for('alarms_page') }}" class="{{ 'active' if active_tab=='alarms' else '' }}">Alarme</a>
-</header>
+  <header>
+    <a href="./" class="{% if active_tab=='dashboard' %}active{% endif %}">Dashboard</a>
+    <a href="./alarms" class="{% if active_tab=='alarms' %}active{% endif %}">Alarme</a>
+  </header>
 
-<div class="page">
-  {% if not alarms or alarms|length == 0 %}
-    <div class="empty">Zur Zeit liegen keine Alarme vor.</div>
-  {% else %}
-    {% for a in alarms %}
-      <div class="alarm">
-        <div class="row">
-          <div class="sev-dot" style="background: {{ a.sev_color | e }};"></div>
-          <div class="org">{{ a.org_name }}</div>
-          {% if a.event_name %}
-            <div>•</div>
-            <div>{{ a.event_name }}</div>
-          {% endif %}
-        </div>
-        {% if a.message %}
-          <div class="msg">{{ a.message }}</div>
-        {% endif %}
-        <div class="meta">
-          Alarm #{{ a.id }} • Start: {{ a.startDate or '–' }}
+  <div class="wrap">
+    {% if orgs|length == 0 %}
+      <div class="card muted">Keine Alarme gefunden.</div>
+    {% endif %}
+
+    {% for org in orgs %}
+      <div class="card">
+        <div class="org">
+          {% if org.avatar %}<img class="avatar" src="{{ org.avatar }}" alt=""/>{% else %}<div class="avatar"></div>{% endif %}
+          <div><strong>{{ org.name }}</strong></div>
         </div>
 
-        {% if a.lat is not none and a.lon is not none %}
-          <div id="map-{{ a.id }}" class="map"></div>
-          <script>
-            (function(){
-              const lat = {{ a.lat }};
-              const lon = {{ a.lon }};
-              const map = L.map("map-{{ a.id }}").setView([lat, lon], 15);
-              L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                attribution: '&copy; OpenStreetMap'
-              }).addTo(map);
-              L.marker([lat, lon]).addTo(map);
-            })();
-          </script>
+        {% if org.alarms and org.alarms|length > 0 %}
+          {% for a in org.alarms %}
+            <div class="alarm">
+              <div class="row">
+                <div class="chip">ID: {{ a.id }}</div>
+                {% if a.event and a.event.name %}<div class="chip">{{ a.event.name }}</div>{% endif %}
+                {% if a.startDate %}<div class="chip">{{ a.startDate }}</div>{% endif %}
+              </div>
+              {% if a.message %}<div style="margin-top:6px">{{ a.message }}</div>{% endif %}
+              {% if a.optionalContent and (a.optionalContent.address or a.optionalContent.latitude) %}
+                <div class="muted" style="margin-top:6px">
+                  {% if a.optionalContent.address %}📍 {{ a.optionalContent.address }}{% endif %}
+                  {% if a.optionalContent.latitude %} ({{ a.optionalContent.latitude }}, {{ a.optionalContent.longitude }}){% endif %}
+                </div>
+              {% endif %}
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="muted">Keine Alarme.</div>
         {% endif %}
       </div>
     {% endfor %}
-  {% endif %}
-</div>
+  </div>
 </body>
 </html>

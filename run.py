@@ -2,7 +2,7 @@
 import os, sys, json, time, pathlib, importlib.util
 from typing import Dict, Any, List
 import threading
-from run_state import save_alarms_cache
+from run_state import save_alarms_cache, load_ui_cache  
 
 sys.path.insert(0, os.path.dirname(__file__) or "/")
 try:
@@ -36,6 +36,10 @@ DEVICE_NAME = os.environ.get("DEVICE_NAME", "GroupAlarm Bridge")
 DEVICE_ID   = os.environ.get("DEVICE_ID", "groupalarm_bridge_1")
 ALARM_POLL_SEC = int(os.environ.get("ALARM_POLL_SEC", "5"))
 LAST_ALARM_IDS = {}
+ALARM_RESET_SECONDS = int(os.environ.get("ALARM_RESET_SECONDS", "60"))
+_last_alarm_published: dict[int, dict] = {}  # {org_id: {"id": int, "ts": epoch}}
+
+
 mqtt = None
 have_mqtt = False
 
@@ -191,10 +195,70 @@ def try_setup_mqtt():
     except Exception as e:
         print(json.dumps({"mqtt_error":str(e)}), flush=True)
 
-def mqtt_publish(topic: str, payload: Dict[str,Any], retain: bool = True):
-    if not have_mqtt:
+def mqtt_publish(topic, payload, retain=True):
+    if not have_mqtt: return
+    if isinstance(payload, (dict, list)):
+        payload = json.dumps(payload, ensure_ascii=False)
+    mqtt.publish(topic, payload, qos=0, retain=retain)
+
+def discovery_alarm_binary_sensor(org_id: int, org_name: str):
+    if not have_mqtt: return
+    uniq = f"{DEVICE_ID}_org{org_id}_alarm"
+    topic_cfg = f"{DISCOVERY}/binary_sensor/{DEVICE_ID}/org{org_id}_alarm/config"
+    state_topic = f"{DISCOVERY}/{DEVICE_ID}/org/{org_id}/alarm"
+    payload = {
+        "name": f"{org_name} – Alarm",
+        "unique_id": uniq,
+        "device": {
+            "identifiers": [DEVICE_ID],
+            "name": DEVICE_NAME,
+            "manufacturer": "GroupAlarm",
+            "model": "REST Bridge",
+        },
+        "state_topic": state_topic,
+        "value_template": "{{ 'ON' if value_json.active else 'OFF' }}",
+        "json_attributes_topic": state_topic,
+        "icon": "mdi:alarm-light",
+    }
+    mqtt_publish(topic_cfg, payload, retain=True)
+
+def publish_alarm_state(org_id: int, alarm: dict | None, org_name: str):
+    """
+    Bei neuem Alarm: active:true + reichlich Attribute veröffentlichen.
+    Nach Ablauf: active:false.
+    """
+    state_topic = f"{DISCOVERY}/{DEVICE_ID}/org/{org_id}/alarm"
+
+    if alarm is None:
+        mqtt_publish(state_topic, {"active": False, "ts": int(time.time())}, retain=False)
         return
-    mqtt.publish(topic, json.dumps(payload, ensure_ascii=False), qos=0, retain=retain)
+
+    ev = alarm.get("event") or {}
+    sev = ev.get("severity") or {}
+    opt = alarm.get("optionalContent") or {}
+    attrs = {
+        "active": True,
+        "id": alarm.get("id"),
+        "message": alarm.get("message"),
+        "startDate": alarm.get("startDate"),
+        "organizationID": alarm.get("organizationID"),
+        "event": {
+            "id": ev.get("id"),
+            "name": ev.get("name"),
+            "severity": {
+                "name": sev.get("name"),
+                "level": sev.get("level"),
+                "color": sev.get("color"),
+                "icon": sev.get("icon"),
+            },
+        },
+        "address": opt.get("address"),
+        "latitude": opt.get("latitude"),
+        "longitude": opt.get("longitude"),
+        "creatorName": alarm.get("creatorName"),
+        "creatorID": alarm.get("creatorID"),
+    }
+    mqtt_publish(state_topic, attrs, retain=False)
 
 def discovery_quick_action_button(org_id: int, org_name: str, qa: dict):
     if not have_mqtt:
@@ -319,11 +383,44 @@ def simplify_alarm(a: dict) -> dict:
 def fetch_org_alarms(org_id: int) -> list[dict]:
     try:
         data = http("GET", f"/alarms?organization={org_id}")
-        raw = (data or {}).get("alarms") or []
-        return [simplify_alarm(a) for a in raw]
+        return list(data.get("alarms", [])) if isinstance(data, dict) else []
     except Exception as e:
         print(json.dumps({"alarms_error": str(e), "org": org_id}), flush=True)
         return []
+    
+
+def alarm_poller_once(target_orgs: list[int]):
+    ui = load_ui_cache() or {}
+    names = ui.get("names", {})
+
+    by_org: dict[int, list] = {}
+    now = int(time.time())
+
+    for org in target_orgs:
+        alarms = fetch_org_alarms(org)
+        by_org[org] = alarms
+
+        org_name = names.get(org, f"Org {org}")
+        discovery_alarm_binary_sensor(org, org_name)
+
+        latest_id = max((a.get("id", 0) for a in alarms), default=0)
+        last = _last_alarm_published.get(org, {})
+        last_id = int(last.get("id") or 0)
+        last_ts = int(last.get("ts") or 0)
+
+        if latest_id and latest_id != last_id:
+            alarm_obj = next((a for a in alarms if a.get("id") == latest_id), None)
+            publish_alarm_state(org, alarm_obj, org_name)
+            _last_alarm_published[org] = {"id": latest_id, "ts": now}
+
+        elif last_id and (now - last_ts >= ALARM_RESET_SECONDS):
+            publish_alarm_state(org, None, org_name)  # OFF
+            _last_alarm_published[org] = {"id": last_id, "ts": now}  
+
+    save_alarms_cache(by_org=by_org)
+    print(json.dumps({"alarms_cache": "updated",
+                      "counts": {str(k): len(v) for k, v in by_org.items()}},
+                     ensure_ascii=False), flush=True)
 
 def refresh_alarms_for_all_orgs():
     live_ids, names_all, avatars_all = current_org_ids_and_names()
@@ -372,24 +469,19 @@ def ensure_mqtt_subscribe():
 
 if __name__ == "__main__":
     try_setup_mqtt()
-    ensure_discovery()
-    ensure_mqtt_subscribe()
-
     refresh_all_quick_actions_and_discovery()
-    refresh_alarms_for_all_orgs()
 
-    t_next_actions = time.monotonic() + max(5, INTERVAL)
-    t_next_alarms  = time.monotonic() + max(1, ALARM_POLL_SEC)
-
+    i = 0
     while True:
-        now = time.monotonic()
-
-        if now >= t_next_alarms:
-            refresh_alarms_for_all_orgs()
-            t_next_alarms = now + max(1, ALARM_POLL_SEC)
-
-        if now >= t_next_actions:
+        if i % 6 == 0:  
             refresh_all_quick_actions_and_discovery()
-            t_next_actions = now + max(5, INTERVAL)
 
-        time.sleep(0.5)
+        target_orgs = ORG_IDS or ([PRIMARY] if PRIMARY else [])
+        if not target_orgs:
+            ui = load_ui_cache() or {}
+            target_orgs = ui.get("order", []) or sorted((ui.get("names") or {}).keys())
+
+        alarm_poller_once(target_orgs)
+
+        i += 1
+        time.sleep(5) 

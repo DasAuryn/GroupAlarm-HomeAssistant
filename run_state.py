@@ -1,4 +1,3 @@
-# run_state.py
 import json, os, time, threading
 
 UI_CACHE_FILE = "/data/ga_ui_cache.json"
@@ -8,21 +7,21 @@ CACHE_LOCK = threading.RLock()
 ACTIONS_CACHE = {}
 ORG_NAMES = {}
 
+def _to_int_keys(d):
+    return {int(k): v for k, v in d.items()} if isinstance(d, dict) else {}
+
 def save_ui_cache(*, names: dict, actions_by_org: dict, org_order: list[int], avatars: dict):
     payload = {
-        "names": names,               
-        "actions": actions_by_org,    
-        "order": org_order,           
-        "avatars": avatars,           
+        "names": names,
+        "actions": actions_by_org,
+        "order": org_order,
+        "avatars": avatars,
         "ts": int(time.time()),
     }
     tmp = UI_CACHE_FILE + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False)
     os.replace(tmp, UI_CACHE_FILE)
-
-def _to_int_keys(d):
-    return {int(k): v for k, v in d.items()} if isinstance(d, dict) else {}
 
 def load_ui_cache():
     try:
