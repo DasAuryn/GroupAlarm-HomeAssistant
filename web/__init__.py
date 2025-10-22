@@ -33,6 +33,14 @@ def quick_actions_for_org(org_id: int):
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 
+@app.get("/alarms.json")
+def alarms_json():
+    data = load_alarms_cache() or {}
+    return jsonify({
+        "ts": data.get("ts", 0),
+        "counts": {str(k): len(v) for k, v in (data.get("by_org") or {}).items()}
+    })
+
 @app.get("/")
 def index():
     ui = load_ui_cache() or {}
