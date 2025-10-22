@@ -16,10 +16,11 @@ Es bietet eine moderne Ingress-Oberfläche mit den Tabs **Alarme** (Standard) un
 ### Add-on Store (empfohlen)
 
 1. In Home Assistant **Einstellungen → Add-ons → Add-on Store** öffnen.  
-2. Über Menü (⋮) **Repositories** dieses Repo hinzufügen.  
+2. Über Menü (⋮) **Repositories** dieses Repo hinzufügen.  `https://github.com/DasAuryn/GroupAlarm-HomeAssistant`
 3. **GroupAlarm Add-on** installieren.  
 4. In den **Einstellungen** die Konfiguration vornehmen (siehe unten).  
 5. Add-on **starten** und über **Ingress** öffnen.
+
 
 ### Manuell
 
