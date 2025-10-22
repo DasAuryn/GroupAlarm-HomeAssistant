@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os, sys, json, time, pathlib, importlib.util
 from typing import Dict, Any, List
+import threading
 
 sys.path.insert(0, os.path.dirname(__file__) or "/")
 try:
@@ -32,12 +33,36 @@ MQTT_PASS   = os.environ.get("MQTT_PASSWORD", "")
 DISCOVERY   = os.environ.get("DISCOVERY_PREFIX", "homeassistant")
 DEVICE_NAME = os.environ.get("DEVICE_NAME", "GroupAlarm Bridge")
 DEVICE_ID   = os.environ.get("DEVICE_ID", "groupalarm_bridge_1")
-
+ALARM_POLL_SEC = int(os.environ.get("ALARM_POLL_SEC", "5"))
+LAST_ALARM_IDS = {}
 mqtt = None
 have_mqtt = False
 
 import requests
+def fetch_latest_alarms_for_org(org_id: int) -> list[dict]:
+    try:
+        data = http("GET", f"/alarms", params={"organization": org_id})
+        alarms = (data or {}).get("alarms") or []
+        return alarms[:5]
+    except Exception as e:
+        print(json.dumps({"alarms_error": str(e), "org": org_id}), flush=True)
+        return []
 
+def refresh_alarms_every_5s():
+    while True:
+        try:
+            live_ids, names_all, avatars_all = current_org_ids_and_names()
+            target_orgs = live_ids or (ORG_IDS or ([PRIMARY] if PRIMARY else []))
+
+            alarms_by_org = {}
+            for oid in target_orgs:
+                alarms = fetch_latest_alarms_for_org(oid)
+                alarms_by_org[oid] = alarms
+
+            save_ui_cache(alarms_by_org=alarms_by_org)
+        except Exception as e:
+            print(json.dumps({"alarms_loop_error": str(e)}), flush=True)
+        time.sleep(5)
 def http(method: str, path: str, **kw):
     assert API_BASE, "API_BASE_URL missing"
     headers = kw.pop("headers", {})
@@ -89,7 +114,6 @@ def quick_actions_for_org(org_id: int) -> List[dict]:
     return []
 
 def current_org_ids_and_names() -> tuple[list[int], dict[int, str], dict[int, str]]:
-    """Liefert (ids, names, avatars) der aktuellen Orgas laut API."""
     try:
         orgs = http("GET", "/organizations")
     except Exception as e:
@@ -264,16 +288,109 @@ def refresh_all_quick_actions_and_discovery():
         ), flush=True)
     except Exception as e:
         print(json.dumps({"cache_file_error": str(e)}), flush=True)
+def simplify_alarm(a: dict) -> dict:
+    ev = a.get("event") or {}
+    opt = a.get("optionalContent") or {}
+    sev = (ev.get("severity") or {})
+    return {
+        "id": a.get("id"),
+        "message": a.get("message"),
+        "startDate": a.get("startDate"),
+        "organizationID": a.get("organizationID"),
+        "event": {
+            "id": ev.get("id"),
+            "name": ev.get("name"),
+            "startDate": ev.get("startDate"),
+            "severity": {
+                "level": (sev.get("level")),
+                "name": (sev.get("name")),
+                "color": (sev.get("color")),
+                "icon": (sev.get("icon")),
+            }
+        },
+        "optionalContent": {
+            "address": opt.get("address"),
+            "latitude": opt.get("latitude"),
+            "longitude": opt.get("longitude"),
+        }
+    }
+
+def fetch_org_alarms(org_id: int) -> list[dict]:
+    try:
+        data = http("GET", f"/alarms?organization={org_id}")
+        raw = (data or {}).get("alarms") or []
+        return [simplify_alarm(a) for a in raw]
+    except Exception as e:
+        print(json.dumps({"alarms_error": str(e), "org": org_id}), flush=True)
+        return []
+
+def refresh_alarms_for_all_orgs():
+    live_ids, names_all, avatars_all = current_org_ids_and_names()
+    target_orgs = live_ids or (ORG_IDS or ([PRIMARY] if PRIMARY else []))
+    alarms_by_org: dict[int, list[dict]] = {}
+    for oid in target_orgs:
+        alarms_by_org[oid] = fetch_org_alarms(oid)
+
+    try:
+        save_ui_cache(alarms_by_org=alarms_by_org)
+        print(json.dumps({
+            "alarms_cache": "updated",
+            "counts": {str(k): len(v or []) for k, v in alarms_by_org.items()}
+        }, ensure_ascii=False), flush=True)
+    except Exception as e:
+        print(json.dumps({"alarms_cache_error": str(e)}), flush=True)
+
+def discovery_for_org(org_id: int, org_name: str) -> None:
+    return        
+
+def ensure_discovery():
+    if not have_mqtt:
+        return
+    try:
+        orgs = http("GET", "/organizations")
+        names = {int(o["id"]): o.get("name", f"Org {o['id']}") for o in orgs if isinstance(o, dict) and "id" in o}
+    except Exception as e:
+        print(json.dumps({"discovery_orgs_error": str(e)}), flush=True)
+        names = {}
+
+    target_orgs = ORG_IDS or ([PRIMARY] if PRIMARY else [])
+    if not target_orgs:
+        target_orgs = list(names.keys())
+
+    for oid in target_orgs:
+        discovery_for_org(oid, names.get(oid, f"Org {oid}"))
+
+
+def ensure_mqtt_subscribe():
+    if not have_mqtt:
+        return
+    topic = f"{DISCOVERY}/{DEVICE_ID}/org/+/action/+/set"
+    try:
+        mqtt.subscribe(topic, qos=0)
+        mqtt.on_message = on_mqtt_message  
+    except Exception as e:
+        print(json.dumps({"mqtt_subscribe_error": str(e), "topic": topic}), flush=True)
 
 if __name__ == "__main__":
     try_setup_mqtt()
+    ensure_discovery()
+    ensure_mqtt_subscribe()
 
     refresh_all_quick_actions_and_discovery()
+    refresh_alarms_for_all_orgs()
 
-    i = 0
+    t_next_actions = time.monotonic() + max(5, INTERVAL)
+    t_next_alarms  = time.monotonic() + max(1, ALARM_POLL_SEC)
+
     while True:
+        now = time.monotonic()
 
-        if i % 5 == 0:
+        if now >= t_next_alarms:
+            refresh_alarms_for_all_orgs()
+            t_next_alarms = now + max(1, ALARM_POLL_SEC)
+
+        if now >= t_next_actions:
             refresh_all_quick_actions_and_discovery()
-        i += 1
-        time.sleep(INTERVAL)
+            t_next_actions = now + max(5, INTERVAL)
+
+        time.sleep(0.5)

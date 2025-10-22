@@ -3,7 +3,7 @@ import json
 from flask import Flask, render_template, jsonify
 import requests
 
-from run_state import load_ui_cache  
+from run_state import load_ui_cache, save_ui_cache
 
 API_BASE    = os.getenv("API_BASE_URL", "").rstrip("/")
 TOKEN       = os.getenv("TOKEN", "")
@@ -26,9 +26,18 @@ def http(method: str, path: str, **kw):
     return r.text
 
 def _get(cache: dict, section: str, key):
-    """section ('names'/'actions'/'avatars') mit int- oder str-Key zuverlässig lesen."""
-    d = cache.get(section, {})
-    return d.get(key) if key in d else d.get(str(key), d.get(int(key), None))
+    d = cache.get(section, {}) or {}
+    if key in d:
+        return d[key]
+    skey = str(key)
+    if skey in d:
+        return d[skey]
+    try:
+        ikey = int(key)
+        return d.get(ikey)
+    except (ValueError, TypeError):
+        return None
+
 
 @app.get("/")
 def index():
@@ -76,3 +85,31 @@ def press(org_id: int, qa_id: int):
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
+@app.get("/alarms")
+def alarms_page():
+    data = load_ui_cache() or {}
+    names = data.get("names") or {}
+    order = data.get("order") or []
+    avatars = data.get("avatars") or {}
+    alarms = data.get("alarms") or {}
+
+    ordered = []
+    for oid in order:
+        ordered.append({
+            "org_id": oid,
+            "name": names.get(oid, f"Org {oid}"),
+            "avatar": avatars.get(oid, ""),
+            "alarms": alarms.get(oid, []) or [],
+        })
+    return render_template("alarms.html", orgs=ordered)
+
+@app.get("/alarms.json")
+def alarms_json():
+    data = load_ui_cache() or {}
+    return jsonify({
+        "ts": data.get("ts"),
+        "alarms": data.get("alarms") or {},
+        "names": data.get("names") or {},
+        "order": data.get("order") or [],
+        "avatars": data.get("avatars") or {},
+    })

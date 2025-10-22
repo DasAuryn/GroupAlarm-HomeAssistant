@@ -1,6 +1,6 @@
 name: "GroupAlarm HomeAssistant"
 slug: "groupalarm_homeassistant"
-version: "1.0.0"
+version: "1.0.1"
 description: "Bindet GroupAlarm in Home Assistant ein."
 arch: [amd64, aarch64]
 
