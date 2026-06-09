@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.28
+
+- Add changelog metadata for Home Assistant app update dialogs.
+
 ## 1.0.27
 
 - Add `armv7` support for Raspberry Pi HAOS installations.
