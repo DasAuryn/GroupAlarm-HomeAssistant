@@ -1,4 +1,4 @@
-# GroupAlarm Add-on für Home Assistant 🚒
+# GroupAlarm App für Home Assistant 🚒
 
 [![GitHub Release](https://img.shields.io/github/v/release/DasAuryn/GroupAlarm-HomeAssistant?sort=semver&style=for-the-badge&color=green)](https://github.com/DasAuryn/GroupAlarm-HomeAssistant/releases/)
 [![GitHub Release Date](https://img.shields.io/github/release-date/DasAuryn/GroupAlarm-HomeAssistant?style=for-the-badge&color=green)](https://github.com/DasAuryn/GroupAlarm-HomeAssistant/releases/)
@@ -8,23 +8,25 @@
 
 ## Overview
 
-Das **GroupAlarm Add-on** bindet dein GroupAlarm-System in **Home Assistant** ein.  
+Die **GroupAlarm App** bindet dein GroupAlarm-System in **Home Assistant** ein.  
 Es bietet eine moderne Ingress-Oberfläche mit den Tabs **Alarme** (Standard) und **Quick-Actions**, zeigt Einsatzorte auf einer **Karte** (Leaflet), verwaltet **Orga-Avatare** und erstellt per **MQTT Discovery** passende Entitäten – ideal für Dashboards und Automationen.
 
 ## Installation
 
-### Add-on Store (empfohlen)
+### App Store (empfohlen)
 
-1. In Home Assistant **Einstellungen → Add-ons → Add-on Store** öffnen.  
-2. Über Menü (⋮) **Repositories** dieses Repo hinzufügen.  `https://github.com/DasAuryn/GroupAlarm-HomeAssistant`
-3. **GroupAlarm Add-on** installieren.  
+1. In Home Assistant **Einstellungen → Apps → App Store** öffnen.  
+2. Über Menü (⋮) **Repositories** dieses Repo hinzufügen.  `https://github.com/DasAuryn/GroupAlarm-HomeAssistant.git`
+3. **GroupAlarm App** installieren.  
 4. In den **Einstellungen** die Konfiguration vornehmen (siehe unten).  
-5. Add-on **starten** und über **Ingress** öffnen.
+5. App **starten** und über **Ingress** öffnen.
+
+> Hinweis: In älteren Home-Assistant-Versionen heißt dieser Bereich **Add-ons → Add-on Store**. Technisch ist die App weiterhin ein Supervisor-Add-on; Home Assistant zeigt diese Erweiterungen in aktuellen Versionen jedoch als **Apps** an.
 
 
 ### Manuell
 
-Alternativ kann das Add-on (z. B. via Docker) manuell deployt werden. Lade das Release von GitHub und starte mit passenden Umgebungsvariablen (siehe Konfiguration). Für Supervisor-Setups ist der Add-on-Store der einfachste Weg.
+Alternativ kann die App (z. B. via Docker) manuell deployt werden. Lade das Release von GitHub und starte mit passenden Umgebungsvariablen (siehe Konfiguration). Für Supervisor-/HAOS-Setups ist der App Store der einfachste Weg.
 
 ## Configuration
 
@@ -41,7 +43,7 @@ Die wichtigsten Optionen:
 
 1. In **GroupAlarm** einloggen.  
 2. In den **Kontoeinstellungen** einen **Personal Access Token** erstellen/kopieren.  
-3. In der Add-on-Konfiguration `TOKEN` setzen und – falls nötig – `HEADER_NAME` an deine Instanz anpassen.
+3. In der App-Konfiguration `TOKEN` setzen und – falls nötig – `HEADER_NAME` an deine Instanz anpassen.
 
 ## Usage
 
@@ -57,7 +59,7 @@ Nach dem Start steht die Ingress-UI bereit:
 
 ### Entities
 
-Dieses Add-on stellt u. a. bereit:
+Diese App stellt u. a. bereit:
 
 - **Binary Sensor** je Orga: „**Alarm aktiv**“  
   Wird bei Eingang eines Alarms `on` und geht nach **5 Sekunden automatisch** auf `off` zurück (ideal für Flanken-Trigger).
@@ -69,7 +71,7 @@ Erstelle ein **Issue** oder sende einen **Pull Request** – Beiträge sind will
 
 ## Disclaimer
 
-Dieses Add-on ist **nicht** offiziell mit **GroupAlarm** verbunden.  
+Diese App ist **nicht** offiziell mit **GroupAlarm** verbunden.  
 Die Nutzung erfolgt **auf eigenes Risiko**. Bitte beachte:
 
 - Rechtmäßige Verarbeitung (insb. **DSGVO**),  
