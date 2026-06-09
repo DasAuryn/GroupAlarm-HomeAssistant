@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.29
+
+- Fix Home Assistant Ingress navigation for alarm tabs and Quick Actions.
+
 ## 1.0.28
 
 - Add changelog metadata for Home Assistant app update dialogs.

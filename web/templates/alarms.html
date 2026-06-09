@@ -236,11 +236,9 @@
     <div class="bar">
         <div class="logo" aria-hidden="true"></div>
         <h1>GroupAlarm – Alarme</h1>
-        <a href="{{ url_for('alarms_open_page') }}"
-            class="tab {% if active_tab=='alarms_open' %}active{% endif %}">Offen</a>
-        <a href="{{ url_for('alarms_closed_page') }}"
-            class="tab {% if active_tab=='alarms_closed' %}active{% endif %}">Geschlossen</a>
-        <a href="{{ url_for('dashboard') }}" class="tab {% if active_tab=='dashboard' %}active{% endif %}">Quick-Actions</a>
+        <a href="." class="tab {% if active_tab=='alarms_open' %}active{% endif %}">Offen</a>
+        <a href="closed" class="tab {% if active_tab=='alarms_closed' %}active{% endif %}">Geschlossen</a>
+        <a href="dashboard" class="tab {% if active_tab=='dashboard' %}active{% endif %}">Quick-Actions</a>
     </div>
 
     <div class="wrap">
@@ -298,7 +296,7 @@
 
         async function check() {
             try {
-                const res = await fetch('{{ url_for("alarms_json") }}', { cache: 'no-store' });
+                const res = await fetch('alarms.json', { cache: 'no-store' });
                 if (!res.ok) return;
                 const j = await res.json();
 

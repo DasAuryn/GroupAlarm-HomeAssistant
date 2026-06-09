@@ -1,7 +1,7 @@
 # web/__init__.py
 import os
 import requests
-from flask import Flask, render_template, redirect, url_for, jsonify
+from flask import Flask, render_template, jsonify
 import json, hashlib
 
 from run_state import load_ui_cache, load_alarms_cache, ORG_NAMES
@@ -90,7 +90,7 @@ def _build_alarms_items():
 
 @app.get("/")
 def index():
-    return redirect(url_for("alarms_open_page"))
+    return alarms_open_page()
 
 
 @app.get("/dashboard")
@@ -114,8 +114,9 @@ def dashboard():
 
 @app.get("/alarms")
 def alarms_page():
-    return redirect(url_for("alarms_open_page"))
+    return alarms_open_page()
 
+@app.get("/open")
 @app.get("/alarms/open")
 def alarms_open_page():
     items = _build_alarms_items()
@@ -123,6 +124,7 @@ def alarms_open_page():
         org["display_alarms"] = org.get("open_alarms", []) + org.get("unknown_alarms", [])
     return render_template("alarms.html", orgs=items, active_tab="alarms_open", alarm_view="open")
 
+@app.get("/closed")
 @app.get("/alarms/closed")
 def alarms_closed_page():
     items = _build_alarms_items()
