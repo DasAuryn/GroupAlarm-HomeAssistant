@@ -1,8 +1,8 @@
 name: "GroupAlarm HomeAssistant"
 slug: "groupalarm_homeassistant"
-version: "1.0.26"
+version: "1.0.27"
 description: "Bindet GroupAlarm in Home Assistant ein."
-arch: [amd64, aarch64]
+arch: [amd64, aarch64, armv7]
 
 
 init: false         
@@ -47,4 +47,3 @@ schema:
   mqtt_port: int?                        
   mqtt_username: str?
   mqtt_password: str?
-

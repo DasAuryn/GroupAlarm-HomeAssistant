@@ -90,8 +90,7 @@ def _build_alarms_items():
 
 @app.get("/")
 def index():
-    items = _build_alarms_items()
-    return render_template("alarms.html", orgs=items, active_tab="alarms")
+    return redirect(url_for("alarms_open_page"))
 
 
 @app.get("/dashboard")
@@ -115,8 +114,21 @@ def dashboard():
 
 @app.get("/alarms")
 def alarms_page():
+    return redirect(url_for("alarms_open_page"))
+
+@app.get("/alarms/open")
+def alarms_open_page():
     items = _build_alarms_items()
-    return render_template("alarms.html", orgs=items, active_tab="alarms")
+    for org in items:
+        org["display_alarms"] = org.get("open_alarms", []) + org.get("unknown_alarms", [])
+    return render_template("alarms.html", orgs=items, active_tab="alarms_open", alarm_view="open")
+
+@app.get("/alarms/closed")
+def alarms_closed_page():
+    items = _build_alarms_items()
+    for org in items:
+        org["display_alarms"] = org.get("closed_alarms", [])
+    return render_template("alarms.html", orgs=items, active_tab="alarms_closed", alarm_view="closed")
 
 
 

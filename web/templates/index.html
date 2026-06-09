@@ -316,8 +316,10 @@
     <h1>GroupAlarm – Quick Actions</h1>
 
     <header>
-      <a href="./" class="tab {% if active_tab=='alarms' %}active{% endif %}">Alarme</a>
-      <a href="./dashboard" class="tab {% if active_tab=='dashboard' %}active{% endif %}">Quick-Actions</a>
+      <a href="{{ url_for('alarms_open_page') }}" class="tab {% if active_tab=='alarms_open' %}active{% endif %}">Offen</a>
+      <a href="{{ url_for('alarms_closed_page') }}"
+        class="tab {% if active_tab=='alarms_closed' %}active{% endif %}">Geschlossen</a>
+      <a href="{{ url_for('dashboard') }}" class="tab {% if active_tab=='dashboard' %}active{% endif %}">Quick-Actions</a>
     </header>
 
 

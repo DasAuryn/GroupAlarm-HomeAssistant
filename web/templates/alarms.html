@@ -236,8 +236,11 @@
     <div class="bar">
         <div class="logo" aria-hidden="true"></div>
         <h1>GroupAlarm – Alarme</h1>
-        <a href="./" class="tab {% if active_tab=='alarms' %}active{% endif %}">Alarme</a>
-        <a href="./dashboard" class="tab {% if active_tab=='dashboard' %}active{% endif %}">Quick-Actions</a>
+        <a href="{{ url_for('alarms_open_page') }}"
+            class="tab {% if active_tab=='alarms_open' %}active{% endif %}">Offen</a>
+        <a href="{{ url_for('alarms_closed_page') }}"
+            class="tab {% if active_tab=='alarms_closed' %}active{% endif %}">Geschlossen</a>
+        <a href="{{ url_for('dashboard') }}" class="tab {% if active_tab=='dashboard' %}active{% endif %}">Quick-Actions</a>
     </div>
 
     <div class="wrap">
@@ -253,63 +256,17 @@
                 <div class="org-name">{{ org.name }}</div>
             </div>
 
-            {% if org.alarms and org.alarms|length > 0 %}
-            {% if org.open_alarms and org.open_alarms|length > 0 %}
-            <div class="section-title">Offene Ereignisse</div>
-            {% for a in org.open_alarms %}
-            <div class="alarm open">
+            {% if org.display_alarms and org.display_alarms|length > 0 %}
+            {% for a in org.display_alarms %}
+            <div class="alarm {% if a.event_status == 'open' %}open{% elif a.event_status == 'closed' %}closed{% endif %}">
                 <div class="row">
+                    {% if a.event_status == 'open' %}
                     <div class="chip open">Offen</div>
-                    <div class="chip">ID: {{ a.id }}</div>
-                    {% if a.event and a.event.name %}<div class="chip">{{ a.event.name }}</div>{% endif %}
-                    {% if a.startDate %}<div class="chip">{{ a.startDate }}</div>{% endif %}
-                </div>
-
-                {% if a.message %}<div style="margin-top:6px">{{ a.message }}</div>{% endif %}
-
-                {% if a.optionalContent and (a.optionalContent.latitude or a.optionalContent.address) %}
-                <div class="muted" style="margin-top:6px">
-                    {% if a.optionalContent.address %}{{ a.optionalContent.address }}{% endif %}
-                    {% if a.optionalContent.latitude %}
-                    <div id="map-{{ org.id }}-{{ a.id }}" class="map" data-lat="{{ a.optionalContent.latitude }}"
-                        data-lon="{{ a.optionalContent.longitude }}"></div>
-                    {% endif %}
-                </div>
-                {% endif %}
-            </div>
-            {% endfor %}
-            {% endif %}
-            {% if org.closed_alarms and org.closed_alarms|length > 0 %}
-            <div class="section-title">Geschlossene Ereignisse</div>
-            {% for a in org.closed_alarms %}
-            <div class="alarm closed">
-                <div class="row">
+                    {% elif a.event_status == 'closed' %}
                     <div class="chip closed">Geschlossen</div>
-                    <div class="chip">ID: {{ a.id }}</div>
-                    {% if a.event and a.event.name %}<div class="chip">{{ a.event.name }}</div>{% endif %}
-                    {% if a.startDate %}<div class="chip">{{ a.startDate }}</div>{% endif %}
-                </div>
-
-                {% if a.message %}<div style="margin-top:6px">{{ a.message }}</div>{% endif %}
-
-                {% if a.optionalContent and (a.optionalContent.latitude or a.optionalContent.address) %}
-                <div class="muted" style="margin-top:6px">
-                    {% if a.optionalContent.address %}{{ a.optionalContent.address }}{% endif %}
-                    {% if a.optionalContent.latitude %}
-                    <div id="map-{{ org.id }}-{{ a.id }}" class="map" data-lat="{{ a.optionalContent.latitude }}"
-                        data-lon="{{ a.optionalContent.longitude }}"></div>
-                    {% endif %}
-                </div>
-                {% endif %}
-            </div>
-            {% endfor %}
-            {% endif %}
-            {% if org.unknown_alarms and org.unknown_alarms|length > 0 %}
-            <div class="section-title">Weitere Alarme</div>
-            {% for a in org.unknown_alarms %}
-            <div class="alarm">
-                <div class="row">
+                    {% else %}
                     <div class="chip">Status unbekannt</div>
+                    {% endif %}
                     <div class="chip">ID: {{ a.id }}</div>
                     {% if a.event and a.event.name %}<div class="chip">{{ a.event.name }}</div>{% endif %}
                     {% if a.startDate %}<div class="chip">{{ a.startDate }}</div>{% endif %}
@@ -328,9 +285,10 @@
                 {% endif %}
             </div>
             {% endfor %}
-            {% endif %}
             {% else %}
-            <div class="empty">Keine Alarme.</div>
+            <div class="empty">
+                {% if alarm_view == 'closed' %}Keine geschlossenen Ereignisse.{% else %}Keine offenen Ereignisse.{% endif %}
+            </div>
             {% endif %}
         </div>
         {% endfor %}
@@ -340,7 +298,7 @@
 
         async function check() {
             try {
-                const res = await fetch('./alarms.json', { cache: 'no-store' });
+                const res = await fetch('{{ url_for("alarms_json") }}', { cache: 'no-store' });
                 if (!res.ok) return;
                 const j = await res.json();
 
