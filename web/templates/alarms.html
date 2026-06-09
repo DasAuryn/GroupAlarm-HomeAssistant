@@ -165,6 +165,15 @@
             margin: 8px 0;
         }
 
+        .alarm.open {
+            border-color: #33c77a;
+            background: #0b3f3188;
+        }
+
+        .alarm.closed {
+            opacity: .78;
+        }
+
         .row {
             display: flex;
             gap: 8px;
@@ -179,6 +188,25 @@
             border: 1px solid #1a4a82;
             color: var(--text);
             opacity: .95;
+        }
+
+        .chip.open {
+            background: linear-gradient(180deg, #15935a, #0d6f43);
+            border-color: #33c77a;
+        }
+
+        .chip.closed {
+            background: linear-gradient(180deg, #38465a, #2a3444);
+            border-color: #5b6b82;
+            color: #d7dfef;
+        }
+
+        .section-title {
+            margin: 14px 0 6px;
+            color: var(--muted);
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
         }
 
         .muted {
@@ -226,9 +254,12 @@
             </div>
 
             {% if org.alarms and org.alarms|length > 0 %}
-            {% for a in org.alarms %}
-            <div class="alarm">
+            {% if org.open_alarms and org.open_alarms|length > 0 %}
+            <div class="section-title">Offene Ereignisse</div>
+            {% for a in org.open_alarms %}
+            <div class="alarm open">
                 <div class="row">
+                    <div class="chip open">Offen</div>
                     <div class="chip">ID: {{ a.id }}</div>
                     {% if a.event and a.event.name %}<div class="chip">{{ a.event.name }}</div>{% endif %}
                     {% if a.startDate %}<div class="chip">{{ a.startDate }}</div>{% endif %}
@@ -247,6 +278,57 @@
                 {% endif %}
             </div>
             {% endfor %}
+            {% endif %}
+            {% if org.closed_alarms and org.closed_alarms|length > 0 %}
+            <div class="section-title">Geschlossene Ereignisse</div>
+            {% for a in org.closed_alarms %}
+            <div class="alarm closed">
+                <div class="row">
+                    <div class="chip closed">Geschlossen</div>
+                    <div class="chip">ID: {{ a.id }}</div>
+                    {% if a.event and a.event.name %}<div class="chip">{{ a.event.name }}</div>{% endif %}
+                    {% if a.startDate %}<div class="chip">{{ a.startDate }}</div>{% endif %}
+                </div>
+
+                {% if a.message %}<div style="margin-top:6px">{{ a.message }}</div>{% endif %}
+
+                {% if a.optionalContent and (a.optionalContent.latitude or a.optionalContent.address) %}
+                <div class="muted" style="margin-top:6px">
+                    {% if a.optionalContent.address %}{{ a.optionalContent.address }}{% endif %}
+                    {% if a.optionalContent.latitude %}
+                    <div id="map-{{ org.id }}-{{ a.id }}" class="map" data-lat="{{ a.optionalContent.latitude }}"
+                        data-lon="{{ a.optionalContent.longitude }}"></div>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+            {% endif %}
+            {% if org.unknown_alarms and org.unknown_alarms|length > 0 %}
+            <div class="section-title">Weitere Alarme</div>
+            {% for a in org.unknown_alarms %}
+            <div class="alarm">
+                <div class="row">
+                    <div class="chip">Status unbekannt</div>
+                    <div class="chip">ID: {{ a.id }}</div>
+                    {% if a.event and a.event.name %}<div class="chip">{{ a.event.name }}</div>{% endif %}
+                    {% if a.startDate %}<div class="chip">{{ a.startDate }}</div>{% endif %}
+                </div>
+
+                {% if a.message %}<div style="margin-top:6px">{{ a.message }}</div>{% endif %}
+
+                {% if a.optionalContent and (a.optionalContent.latitude or a.optionalContent.address) %}
+                <div class="muted" style="margin-top:6px">
+                    {% if a.optionalContent.address %}{{ a.optionalContent.address }}{% endif %}
+                    {% if a.optionalContent.latitude %}
+                    <div id="map-{{ org.id }}-{{ a.id }}" class="map" data-lat="{{ a.optionalContent.latitude }}"
+                        data-lon="{{ a.optionalContent.longitude }}"></div>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+            {% endif %}
             {% else %}
             <div class="empty">Keine Alarme.</div>
             {% endif %}

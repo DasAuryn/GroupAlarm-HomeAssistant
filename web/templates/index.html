@@ -194,6 +194,82 @@
       transform: translateX(-50%) translateY(0)
     }
 
+    .dialog-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      background: #010814b8;
+      backdrop-filter: blur(5px);
+    }
+
+    .dialog-backdrop.show {
+      display: flex;
+    }
+
+    .dialog {
+      width: min(420px, 100%);
+      border: 1px solid #2a67c3;
+      border-radius: 14px;
+      background: linear-gradient(180deg, #10335f, #0a2343);
+      box-shadow: 0 22px 60px #000c, 0 0 0 1px #0b2a55 inset;
+      padding: 18px;
+    }
+
+    .dialog-title {
+      margin: 0 0 8px;
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .dialog-text {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .dialog-action {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid #1a4a82;
+      background: #0b2a4a88;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+
+    .dialog-buttons {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 18px;
+    }
+
+    .dialog-btn {
+      min-width: 112px;
+      border: 1px solid #1d4e8f;
+      border-radius: 10px;
+      padding: 9px 12px;
+      color: var(--text);
+      background: linear-gradient(180deg, #0e2646, #0b2040);
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .dialog-btn:hover {
+      filter: brightness(1.08);
+      border-color: #3276eb;
+    }
+
+    .dialog-btn.danger {
+      background: linear-gradient(180deg, #e43d3d, #b92727);
+      border-color: #ff7070;
+      color: #fff;
+      box-shadow: 0 8px 18px #cf252566, inset 0 1px 0 #ffffff22;
+    }
+
     .nav {
       margin-left: auto;
       display: flex;
@@ -267,7 +343,8 @@
         {% if org.actions and org.actions|length > 0 %}
         <div class="actions">
           {% for qa in org.actions %}
-          <button class="btn" onclick="press({{ org.id }}, {{ qa.id }}, '{{ qa.name|e }}')">
+          <button class="btn quick-action" data-org-id="{{ org.id }}" data-qa-id="{{ qa.id }}"
+            data-qa-name="{{ qa.name|e }}">
             <span>{{ qa.name }}</span>
             {% if qa.category %}<span class="chip">{{ qa.category }}</span>{% endif %}
           </button>
@@ -283,9 +360,27 @@
   </div>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <div id="confirmDialog" class="dialog-backdrop" role="dialog" aria-modal="true" aria-labelledby="confirmTitle"
+    aria-describedby="confirmText">
+    <div class="dialog">
+      <h2 id="confirmTitle" class="dialog-title">Quick Action auslösen?</h2>
+      <p id="confirmText" class="dialog-text">Diese Aktion löst einen Alarm oder Tag in GroupAlarm aus.</p>
+      <div id="confirmAction" class="dialog-action"></div>
+      <div class="dialog-buttons">
+        <button id="cancelConfirm" class="dialog-btn" type="button">Abbrechen</button>
+        <button id="runConfirm" class="dialog-btn danger" type="button">Auslösen</button>
+      </div>
+    </div>
+  </div>
   <script>
     const toastEl = document.getElementById('toast');
+    const dialogEl = document.getElementById('confirmDialog');
+    const confirmActionEl = document.getElementById('confirmAction');
+    const cancelConfirmEl = document.getElementById('cancelConfirm');
+    const runConfirmEl = document.getElementById('runConfirm');
     let toastTimer = null;
+    let pendingAction = null;
+
     function showToast(msg) {
       toastEl.textContent = msg;
       toastEl.classList.add('show');
@@ -293,10 +388,22 @@
       toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1800);
     }
 
+    function openConfirm(action) {
+      pendingAction = action;
+      confirmActionEl.textContent = action.qaName;
+      dialogEl.classList.add('show');
+      runConfirmEl.focus();
+    }
+
+    function closeConfirm() {
+      pendingAction = null;
+      dialogEl.classList.remove('show');
+    }
+
     async function press(orgId, qaId, qaName) {
       try {
-        const pressPath = `press/${orgId}/${qaId}`; 
-        const pressUrl = new URL(pressPath, window.location.href).toString(); 
+        const pressPath = `press/${orgId}/${qaId}`;
+        const pressUrl = new URL(pressPath, window.location.href).toString();
         const res = await fetch(pressUrl, { method: 'POST' });
         if (!res.ok) {
           const t = await res.text().catch(() => '');
@@ -307,6 +414,35 @@
         showToast(`Fehler: ${e.message}`);
       }
     }
+
+    document.querySelectorAll('.quick-action').forEach((button) => {
+      button.addEventListener('click', () => {
+        openConfirm({
+          orgId: button.dataset.orgId,
+          qaId: button.dataset.qaId,
+          qaName: button.dataset.qaName
+        });
+      });
+    });
+
+    cancelConfirmEl.addEventListener('click', closeConfirm);
+
+    runConfirmEl.addEventListener('click', async () => {
+      if (!pendingAction) return;
+      const action = pendingAction;
+      closeConfirm();
+      await press(action.orgId, action.qaId, action.qaName);
+    });
+
+    dialogEl.addEventListener('click', (event) => {
+      if (event.target === dialogEl) closeConfirm();
+    });
+
+    window.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && dialogEl.classList.contains('show')) {
+        closeConfirm();
+      }
+    });
   </script>
 
 

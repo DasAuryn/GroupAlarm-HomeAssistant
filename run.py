@@ -388,6 +388,47 @@ def fetch_org_alarms(org_id: int) -> list[dict]:
     except Exception as e:
         print(json.dumps({"alarms_error": str(e), "org": org_id}), flush=True)
         return []
+
+def fetch_open_event_ids(org_id: int) -> set[int]:
+    try:
+        events = http("GET", "/events/open", params={"organization": org_id})
+        if not isinstance(events, list):
+            return set()
+        ids: set[int] = set()
+        for event in events:
+            if not isinstance(event, dict):
+                continue
+            event_id = event.get("id") or event.get("eventID") or event.get("eventId")
+            try:
+                ids.add(int(event_id))
+            except (TypeError, ValueError):
+                pass
+        return ids
+    except Exception as e:
+        print(json.dumps({"open_events_error": str(e), "org": org_id}), flush=True)
+        return set()
+
+def annotate_alarm_event_status(alarms: list[dict], open_event_ids: set[int]) -> list[dict]:
+    annotated = []
+    for alarm in alarms:
+        if not isinstance(alarm, dict):
+            continue
+        item = dict(alarm)
+        event = item.get("event") if isinstance(item.get("event"), dict) else {}
+        event_id = event.get("id") or item.get("eventID") or item.get("eventId")
+        try:
+            event_id_int = int(event_id)
+        except (TypeError, ValueError):
+            event_id_int = None
+
+        if event_id_int is None:
+            item["event_status"] = "unknown"
+        elif event_id_int in open_event_ids:
+            item["event_status"] = "open"
+        else:
+            item["event_status"] = "closed"
+        annotated.append(item)
+    return annotated
     
 
 def alarm_poller_once(target_orgs: list[int]):
@@ -399,7 +440,8 @@ def alarm_poller_once(target_orgs: list[int]):
 
     for org in target_orgs:
         alarms = fetch_org_alarms(org)
-        by_org[org] = alarms
+        open_event_ids = fetch_open_event_ids(org)
+        by_org[org] = annotate_alarm_event_status(alarms, open_event_ids)
 
         org_name = names.get(org, f"Org {org}")
         discovery_alarm_binary_sensor(org, org_name)
@@ -428,7 +470,9 @@ def refresh_alarms_for_all_orgs():
     target_orgs = live_ids or (ORG_IDS or ([PRIMARY] if PRIMARY else []))
     alarms_by_org: dict[int, list[dict]] = {}
     for oid in target_orgs:
-        alarms_by_org[oid] = fetch_org_alarms(oid)
+        alarms = fetch_org_alarms(oid)
+        open_event_ids = fetch_open_event_ids(oid)
+        alarms_by_org[oid] = annotate_alarm_event_status(alarms, open_event_ids)
 
     try:
        save_alarms_cache(by_org=alarms_by_org)

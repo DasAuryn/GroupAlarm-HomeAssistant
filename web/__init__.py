@@ -76,11 +76,15 @@ def _build_alarms_items():
 
     items = []
     for oid in order:
+        alarms = by_org.get(oid, [])
         items.append({
             "id": oid,
             "name": names.get(oid, f"Org {oid}"),
             "avatar": avatars.get(oid, ""),
-            "alarms": by_org.get(oid, []),
+            "alarms": alarms,
+            "open_alarms": [a for a in alarms if (a or {}).get("event_status") == "open"],
+            "closed_alarms": [a for a in alarms if (a or {}).get("event_status") == "closed"],
+            "unknown_alarms": [a for a in alarms if (a or {}).get("event_status") not in ("open", "closed")],
         })
     return items
 
