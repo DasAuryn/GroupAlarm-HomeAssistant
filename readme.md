@@ -1,10 +1,9 @@
 # GroupAlarm App für Home Assistant 🚒
 
-[![GitHub Release](https://img.shields.io/github/v/release/DasAuryn/GroupAlarm-HomeAssistant?sort=semver&style=for-the-badge&color=green)](https://github.com/DasAuryn/GroupAlarm-HomeAssistant/releases/)
-[![GitHub Release Date](https://img.shields.io/github/release-date/DasAuryn/GroupAlarm-HomeAssistant?style=for-the-badge&color=green)](https://github.com/DasAuryn/GroupAlarm-HomeAssistant/releases/)
-![GitHub Downloads (all assets, latest release)](https://img.shields.io/github/downloads/DasAuryn/GroupAlarm-HomeAssistant/latest/total?style=for-the-badge&label=Downloads%20latest%20Release)
-![HA Analytics](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fanalytics.home-assistant.io%2Fcustom_integrations.json&query=%24.groupalarm.total&style=for-the-badge&label=Active%20Installations&color=red)
-![GitHub commit activity](https://img.shields.io/github/commit-activity/m/DasAuryn/GroupAlarm-HomeAssistant?style=for-the-badge)
+[![App Version](https://img.shields.io/badge/App%20Version-1.0.29-green?style=for-the-badge)](https://github.com/DasAuryn/GroupAlarm-HomeAssistant/releases/)
+![Home Assistant Add-on](https://img.shields.io/badge/Home%20Assistant-Add--on-41BDF5?style=for-the-badge&logo=homeassistant&logoColor=white)
+![HA Analytics](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fanalytics.home-assistant.io%2Faddons.json&query=%24%5B%271979cc44_groupalarm_homeassistant%27%5D.total&style=for-the-badge&label=Active%20Installations&color=red)
+![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)
 
 ## Overview
 
