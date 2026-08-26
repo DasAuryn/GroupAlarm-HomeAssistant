@@ -1,0 +1,28 @@
+{% set nav = navigation_counts if navigation_counts is defined else {} %}
+<header class="app-header">
+  <div class="app-header-inner">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">GA</span>
+      <span class="brand-copy">
+        <span class="brand-name">GroupAlarm</span>
+        <span class="brand-context">Home Assistant</span>
+      </span>
+    </div>
+
+    <nav class="tabs" aria-label="Ansichten">
+      <a href="." class="tab" {% if active_tab == 'alarms_open' %}aria-current="page"{% endif %}>
+        <span class="tab-label">Offen</span>
+        <span class="tab-count" aria-label="{{ nav.get('alarms_open', 0) }} offene Alarme">{{ nav.get('alarms_open', 0) }}</span>
+      </a>
+      <a href="closed" class="tab" {% if active_tab == 'alarms_closed' %}aria-current="page"{% endif %}>
+        <span class="tab-label">Geschlossen</span>
+        <span class="tab-count" aria-label="{{ nav.get('alarms_closed', 0) }} geschlossene Alarme">{{ nav.get('alarms_closed', 0) }}</span>
+      </a>
+      <a href="dashboard" class="tab" {% if active_tab == 'dashboard' %}aria-current="page"{% endif %}>
+        <span class="tab-label tab-label-wide">Quick-Actions</span>
+        <span class="tab-label tab-label-compact">Aktionen</span>
+        <span class="tab-count" aria-label="{{ nav.get('dashboard', 0) }} Quick-Actions">{{ nav.get('dashboard', 0) }}</span>
+      </a>
+    </nav>
+  </div>
+</header>

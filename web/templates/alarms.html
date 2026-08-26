@@ -2,331 +2,531 @@
 <html lang="de">
 
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>GroupAlarm – Alarme</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GroupAlarm – {% if alarm_view == 'closed' %}Geschlossene{% else %}Offene{% endif %} Alarme</title>
 
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-    <style>
-        :root {
-            --bg: #07192f;
-            --bg2: #041124;
-            --glass: #0d2b52cc;
-            --glass2: #103460cc;
-            --edge: #1b4c8a;
-            --edge2: #2e6dd1;
-            --accent: #2f7bf5;
-            --accent2: #5a98ff;
-            --text: #e8f0ff;
-            --muted: #b9c7e6;
-            --chip: #0b2a52;
-            --glow: #2a7bf0aa;
-        }
+  {% include '_shared_styles.html' %}
+  <style>
+    .alarm-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
 
-        * {
-            box-sizing: border-box
-        }
+    .alarm-list > li + li {
+      border-top: 1px solid var(--border);
+    }
 
-        html,
-        body {
-            height: 100%
-        }
+    .alarm-item {
+      position: relative;
+      padding: 17px 18px 17px 21px;
+      background: #0c1725;
+    }
 
-        body {
-            margin: 0;
-            color: var(--text);
-            background:
-                radial-gradient(1200px 600px at 15% -10%, #0b2a55 0%, transparent 60%),
-                radial-gradient(900px 500px at 100% 0%, #072142 0%, transparent 60%),
-                linear-gradient(180deg, var(--bg), var(--bg2));
-            font: 14px/1.45 Inter, system-ui, Segoe UI, Roboto, Arial, sans-serif;
-        }
+    .alarm-item::before {
+      position: absolute;
+      inset: 14px auto 14px 0;
+      width: 3px;
+      border-radius: 0 3px 3px 0;
+      background: var(--border-strong);
+      content: "";
+    }
 
-        .bar {
-            position: sticky;
-            top: 0;
-            z-index: 5;
-            backdrop-filter: blur(10px);
-            background: linear-gradient(180deg, #0a1f3dbf, #081a31a0);
-            border-bottom: 1px solid #0f2f5a;
-            padding: 12px 18px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
+    .alarm-item.is-open::before {
+      background: var(--red);
+    }
 
-        .logo {
-            width: 28px;
-            height: 28px;
-            border-radius: 8px;
-            background: linear-gradient(145deg, #1e3f74, #2f6bd3);
-            box-shadow: 0 0 0 1px #2a67c3, 0 6px 18px #0b2a5577, inset 0 1px 0 #ffffff22;
-            flex: 0 0 28px;
-        }
+    .alarm-item.is-unknown::before {
+      background: var(--amber);
+    }
 
-        h1 {
-            margin: 0;
-            font-size: 18px;
-            letter-spacing: .2px;
-            font-weight: 650
-        }
+    .alarm-topline {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+    }
 
-        .nav {
-            margin-left: auto;
-            display: flex;
-            gap: 8px
-        }
+    .alarm-title {
+      min-width: 0;
+      margin: 0;
+      overflow-wrap: anywhere;
+      color: var(--text);
+      font-size: 16px;
+      font-weight: 720;
+      line-height: 1.35;
+    }
 
-        .tab {
-            display: inline-flex;
-            align-items: center;
-            gap: .4rem;
-            padding: 8px 12px;
-            border-radius: 10px;
-            text-decoration: none;
-            color: var(--text);
-            font-weight: 600;
-            letter-spacing: .1px;
-            background: linear-gradient(180deg, #0e2646, #0b2040);
-            border: 1px solid #123d73;
-            box-shadow: inset 0 1px 0 #ffffff22, 0 6px 16px #0005;
-            transition: filter .12s ease, transform .04s ease, border-color .12s ease;
-        }
+    .alarm-time {
+      flex: 0 0 auto;
+      color: var(--muted);
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
 
-        .tab:hover {
-            filter: brightness(1.06);
-            border-color: #1b4e86
-        }
+    .alarm-meta {
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px 12px;
+      color: var(--muted);
+      font-size: 12px;
+    }
 
-        .tab:active {
-            transform: translateY(1px)
-        }
+    .status-label {
+      padding: 3px 7px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--border-strong);
+      border-radius: 999px;
+      color: var(--muted-strong);
+      background: #111d2b;
+      font-size: 11px;
+      font-weight: 700;
+    }
 
-        .tab.active {
-            background: linear-gradient(180deg, var(--accent), var(--accent2));
-            border-color: #2e6dd1;
-            color: #fff;
-            box-shadow: 0 8px 18px var(--glow), inset 0 1px 0 #ffffff22;
-        }
+    .status-label::before {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--muted);
+      content: "";
+    }
 
-        .wrap {
-            max-width: 1180px;
-            margin: 18px auto;
-            padding: 0 18px
-        }
+    .status-label.is-open {
+      border-color: rgb(255 98 109 / 38%);
+      color: #ffabb1;
+      background: var(--red-soft);
+    }
 
-        .card {
-            position: relative;
-            background: linear-gradient(180deg, var(--glass), var(--glass2));
-            border: 1px solid var(--edge);
-            border-radius: 18px;
-            padding: 14px;
-            box-shadow: 0 10px 30px #0008, 0 0 0 1px #0b2a55 inset;
-            transition: transform .06s ease, box-shadow .16s ease, border-color .16s ease;
-            margin-bottom: 16px;
-        }
+    .status-label.is-open::before {
+      background: var(--red);
+    }
 
-        .card:hover {
-            transform: translateY(-1px);
-            border-color: #2a67c3;
-            box-shadow: 0 12px 34px #000a, 0 0 0 1px #1a4e86 inset
-        }
+    .status-label.is-unknown {
+      border-color: rgb(244 187 85 / 36%);
+      color: #f5cb7f;
+      background: var(--amber-soft);
+    }
 
-        .org {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 10px
-        }
+    .status-label.is-unknown::before {
+      background: var(--amber);
+    }
 
-        .avatar {
-            width: 34px;
-            height: 34px;
-            border-radius: 50%;
-            flex: 0 0 34px;
-            object-fit: cover;
-            background: #0f3a64;
-            border: 1px solid #1b4e86;
-            box-shadow: 0 1px 0 #0007, inset 0 0 0 2px #0002;
-        }
+    .alarm-address {
+      margin: 11px 0 0;
+      display: flex;
+      align-items: flex-start;
+      gap: 7px;
+      color: var(--muted-strong);
+      font-size: 13px;
+    }
 
-        .org-name {
-            font-weight: 700;
-            letter-spacing: .2px
-        }
+    .alarm-address svg {
+      width: 15px;
+      height: 15px;
+      flex: 0 0 15px;
+      margin-top: 2px;
+      color: var(--muted);
+    }
 
-        .alarm {
-            padding: 10px;
-            border-radius: 12px;
-            border: 1px solid #1a4e86;
-            background: #0b2a4a88;
-            margin: 8px 0;
-        }
+    .map-disclosure {
+      margin-top: 12px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      background: #09131f;
+    }
 
-        .alarm.open {
-            border-color: #33c77a;
-            background: #0b3f3188;
-        }
+    .map-summary {
+      min-height: 42px;
+      padding: 8px 11px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      list-style: none;
+      color: var(--muted-strong);
+      font-size: 12px;
+      font-weight: 650;
+    }
 
-        .alarm.closed {
-            opacity: .78;
-        }
+    .map-summary::-webkit-details-marker {
+      display: none;
+    }
 
-        .row {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap
-        }
+    .map-summary::marker {
+      content: "";
+    }
 
-        .chip {
-            font-size: 12px;
-            padding: 2px 8px;
-            border-radius: 999px;
-            background: linear-gradient(180deg, #0f2f5a, #0c294f);
-            border: 1px solid #1a4a82;
-            color: var(--text);
-            opacity: .95;
-        }
+    .map-summary:hover {
+      color: var(--text);
+      background: var(--surface-hover);
+    }
 
-        .chip.open {
-            background: linear-gradient(180deg, #15935a, #0d6f43);
-            border-color: #33c77a;
-        }
+    .map-summary svg {
+      width: 15px;
+      height: 15px;
+      color: var(--blue);
+    }
 
-        .chip.closed {
-            background: linear-gradient(180deg, #38465a, #2a3444);
-            border-color: #5b6b82;
-            color: #d7dfef;
-        }
+    .map-summary-chevron {
+      width: 7px;
+      height: 7px;
+      margin: 0 3px 3px auto;
+      border-right: 1.5px solid var(--muted);
+      border-bottom: 1.5px solid var(--muted);
+      transform: rotate(45deg);
+      transition: transform .15s ease, margin .15s ease;
+    }
 
-        .section-title {
-            margin: 14px 0 6px;
-            color: var(--muted);
-            font-size: 13px;
-            font-weight: 700;
-            text-transform: uppercase;
-        }
+    .map-disclosure[open] .map-summary-chevron {
+      margin-top: 4px;
+      margin-bottom: 0;
+      transform: rotate(225deg);
+    }
 
-        .muted {
-            color: var(--muted)
-        }
+    .map-body {
+      padding: 0 10px 10px;
+    }
 
-        .empty {
-            margin-top: 4px;
-            padding: 12px;
-            border-radius: 12px;
-            border: 1px dashed #1a406e;
-            color: var(--muted);
-            background: #0b2a4a88;
-        }
+    .map-toolbar {
+      padding: 7px 1px 9px;
+      display: flex;
+      justify-content: flex-end;
+    }
 
-        .map {
-            height: 220px;
-            border-radius: 12px;
-            overflow: hidden;
-            margin-top: 8px;
-            box-shadow: inset 0 0 0 1px #0b2a55;
-        }
-    </style>
+    .osm-link {
+      color: var(--blue);
+      font-size: 12px;
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    .osm-link:hover {
+      text-decoration: underline;
+    }
+
+    .map {
+      height: 220px;
+      overflow: hidden;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      color: var(--muted);
+      background: #0a1420;
+      font-size: 12px;
+    }
+
+    .map.leaflet-container {
+      display: block;
+      color: #222;
+      background: #d8e1e8;
+    }
+
+    .leaflet-control-attribution {
+      font-size: 10px;
+    }
+
+    @media (max-width: 600px) {
+      .alarm-item {
+        padding: 15px 13px 15px 17px;
+      }
+
+      .alarm-topline {
+        display: block;
+      }
+
+      .alarm-time {
+        display: block;
+        margin-top: 5px;
+      }
+
+      .map {
+        height: 180px;
+      }
+    }
+  </style>
 </head>
 
 <body>
-    <div class="bar">
-        <div class="logo" aria-hidden="true"></div>
-        <h1>GroupAlarm – Alarme</h1>
-        <a href="." class="tab {% if active_tab=='alarms_open' %}active{% endif %}">Offen</a>
-        <a href="closed" class="tab {% if active_tab=='alarms_closed' %}active{% endif %}">Geschlossen</a>
-        <a href="dashboard" class="tab {% if active_tab=='dashboard' %}active{% endif %}">Quick-Actions</a>
-    </div>
+  {% include '_app_header.html' %}
 
-    <div class="wrap">
-        {% if orgs|length == 0 %}
-        <div class="card muted">Keine Alarme gefunden.</div>
-        {% endif %}
+  {% set nav = navigation_counts if navigation_counts is defined else {} %}
+  {% if alarm_view == 'closed' %}
+    {% set display_total = nav.get('alarms_closed', 0) %}
+  {% else %}
+    {% set display_total = nav.get('alarms_open', 0) %}
+  {% endif %}
 
+  <main class="page">
+    <header class="page-intro">
+      <div>
+        <span class="eyebrow">Alarmübersicht</span>
+        <h1 class="page-title">{% if alarm_view == 'closed' %}Geschlossene Alarme{% else %}Offene Alarme{% endif %}</h1>
+        <p class="page-description">
+          {% if alarm_view == 'closed' %}
+            Abgeschlossene Ereignisse, kompakt nach Organisation sortiert.
+          {% else %}
+            Aktive und noch nicht eindeutig zugeordnete Ereignisse auf einen Blick.
+          {% endif %}
+        </p>
+      </div>
+      <div class="page-total {% if alarm_view != 'closed' and display_total > 0 %}is-alert{% endif %}">
+        <strong>{{ display_total }}</strong>
+        {% if alarm_view == 'closed' %}geschlossen{% else %}offen{% endif %}
+      </div>
+    </header>
+
+    {% if orgs|length == 0 %}
+      <div class="empty-state page-empty">Keine Organisationen im Cache gefunden.</div>
+    {% else %}
+      <section class="organization-list" aria-label="Organisationen">
         {% for org in orgs %}
-        <div class="card">
-            <div class="org">
-                {% if org.avatar %}<img class="avatar" src="{{ org.avatar }}" alt="" />{% else %}<div class="avatar">
-                </div>{% endif %}
-                <div class="org-name">{{ org.name }}</div>
-            </div>
-
-            {% if org.display_alarms and org.display_alarms|length > 0 %}
-            {% for a in org.display_alarms %}
-            <div class="alarm {% if a.event_status == 'open' %}open{% elif a.event_status == 'closed' %}closed{% endif %}">
-                <div class="row">
-                    {% if a.event_status == 'open' %}
-                    <div class="chip open">Offen</div>
-                    {% elif a.event_status == 'closed' %}
-                    <div class="chip closed">Geschlossen</div>
-                    {% else %}
-                    <div class="chip">Status unbekannt</div>
-                    {% endif %}
-                    <div class="chip">ID: {{ a.id }}</div>
-                    {% if a.event and a.event.name %}<div class="chip">{{ a.event.name }}</div>{% endif %}
-                    {% if a.startDate %}<div class="chip">{{ a.startDate }}</div>{% endif %}
-                </div>
-
-                {% if a.message %}<div style="margin-top:6px">{{ a.message }}</div>{% endif %}
-
-                {% if a.optionalContent and (a.optionalContent.latitude or a.optionalContent.address) %}
-                <div class="muted" style="margin-top:6px">
-                    {% if a.optionalContent.address %}{{ a.optionalContent.address }}{% endif %}
-                    {% if a.optionalContent.latitude %}
-                    <div id="map-{{ org.id }}-{{ a.id }}" class="map" data-lat="{{ a.optionalContent.latitude }}"
-                        data-lon="{{ a.optionalContent.longitude }}"></div>
-                    {% endif %}
-                </div>
+          {% set alarm_count = org.display_alarms|length if org.display_alarms else 0 %}
+          <details
+            class="organization-panel {% if alarm_count == 0 %}is-empty{% endif %}"
+            data-org-id="{{ org.id }}"
+            data-view="alarms-{{ alarm_view }}"
+            data-content-key="{{ org.panel_content_key }}"
+            {% if alarm_count > 0 %}open{% endif %}
+          >
+            <summary class="organization-summary">
+              {% if org.avatar %}
+                <img class="organization-avatar" src="{{ org.avatar }}" alt="" />
+              {% else %}
+                <span class="organization-initial" aria-hidden="true">{{ (org.name or '?')[:1]|upper }}</span>
+              {% endif %}
+              <span class="organization-heading">
+                <span class="organization-name">{{ org.name }}</span>
+                <span class="organization-id">Organisation {{ org.id }}</span>
+              </span>
+              <span class="organization-count {% if alarm_view != 'closed' and alarm_count > 0 %}is-alert{% endif %}">
+                {% if alarm_count == 0 %}
+                  Keine Alarme
+                {% elif alarm_view == 'closed' %}
+                  {{ alarm_count }} geschlossen
+                {% else %}
+                  {{ alarm_count }} offen
                 {% endif %}
+              </span>
+              <span class="organization-chevron" aria-hidden="true"></span>
+            </summary>
+
+            <div class="organization-body">
+              {% if alarm_count > 0 %}
+                <ul class="alarm-list">
+                  {% for a in org.display_alarms %}
+                    {% set event = a.event or {} %}
+                    {% set optional = a.optionalContent or {} %}
+                    {% set start_date = a.startDate or event.startDate %}
+                    {% set title = a.message or event.name or 'Alarm ohne Bezeichnung' %}
+                    {% set status = a.event_status or 'unknown' %}
+                    <li>
+                      <article class="alarm-item {% if status == 'open' %}is-open{% elif status == 'closed' %}is-closed{% else %}is-unknown{% endif %}">
+                        <div class="alarm-topline">
+                          <h2 class="alarm-title">{{ title }}</h2>
+                          {% if start_date %}
+                            <time class="alarm-time" datetime="{{ start_date }}" data-date="{{ start_date }}">{{ start_date }}</time>
+                          {% endif %}
+                        </div>
+
+                        <div class="alarm-meta">
+                          {% if status == 'open' %}
+                            <span class="status-label is-open">Offen</span>
+                          {% elif status == 'closed' %}
+                            <span class="status-label">Geschlossen</span>
+                          {% else %}
+                            <span class="status-label is-unknown">Status unbekannt</span>
+                          {% endif %}
+                          {% if event.name %}<span>{{ event.name }}</span>{% endif %}
+                          {% if a.id is defined and a.id is not none %}<span>Alarm {{ a.id }}</span>{% endif %}
+                        </div>
+
+                        {% if optional.address %}
+                          <p class="alarm-address">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                              <path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" />
+                              <circle cx="12" cy="10" r="2.5" />
+                            </svg>
+                            <span>{{ optional.address }}</span>
+                          </p>
+                        {% endif %}
+
+                        {% if optional.latitude is defined and optional.latitude is not none and optional.longitude is defined and optional.longitude is not none %}
+                          <details class="map-disclosure">
+                            <summary class="map-summary">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                <path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3V6Z" />
+                                <path d="M9 3v15M15 6v15" />
+                              </svg>
+                              <span>Karte anzeigen</span>
+                              <span class="map-summary-chevron" aria-hidden="true"></span>
+                            </summary>
+                            <div class="map-body">
+                              <div class="map-toolbar">
+                                <a class="osm-link" target="_blank" rel="noopener noreferrer">In OpenStreetMap öffnen</a>
+                              </div>
+                              <div
+                                class="map"
+                                data-lat="{{ optional.latitude }}"
+                                data-lon="{{ optional.longitude }}"
+                                aria-label="Alarmort auf der Karte"
+                              ><span>Karte wird geladen…</span></div>
+                            </div>
+                          </details>
+                        {% endif %}
+                      </article>
+                    </li>
+                  {% endfor %}
+                </ul>
+              {% else %}
+                <div class="empty-state">
+                  {% if alarm_view == 'closed' %}Keine geschlossenen Ereignisse.{% else %}Keine offenen Ereignisse.{% endif %}
+                </div>
+              {% endif %}
             </div>
-            {% endfor %}
-            {% else %}
-            <div class="empty">
-                {% if alarm_view == 'closed' %}Keine geschlossenen Ereignisse.{% else %}Keine offenen Ereignisse.{% endif %}
-            </div>
-            {% endif %}
-        </div>
+          </details>
         {% endfor %}
-    </div>
-    <script>
-        let lastSig = null;
+      </section>
+    {% endif %}
+  </main>
 
-        async function check() {
-            try {
-                const res = await fetch('alarms.json', { cache: 'no-store' });
-                if (!res.ok) return;
-                const j = await res.json();
+  {% include '_organization_panels_script.html' %}
+  <script>
+    (() => {
+      const alarmMaps = new Map();
 
-                if (lastSig === null) {
-                    lastSig = j.sig || "";
-                    return;
-                }
-                if (j.sig && j.sig !== lastSig) {
-                    window.location.reload();
-                }
-            } catch (e) { /* ignore */ }
+      function readCoordinates(mapElement) {
+        const rawLat = mapElement.dataset.lat;
+        const rawLon = mapElement.dataset.lon;
+        if (!rawLat || !rawLat.trim() || !rawLon || !rawLon.trim()) return null;
+
+        const lat = Number(rawLat);
+        const lon = Number(rawLon);
+        if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+        if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return null;
+        return { lat, lon };
+      }
+
+      function initializeMap(disclosure) {
+        const mapElement = disclosure.querySelector('.map[data-lat][data-lon]');
+        const organization = disclosure.closest('.organization-panel');
+        if (!mapElement || !disclosure.open || (organization && !organization.open)) return;
+
+        const existingMap = alarmMaps.get(mapElement);
+        if (existingMap) {
+          existingMap.invalidateSize();
+          return;
         }
 
-        check();
-        setInterval(check, 5000);
-    </script>
+        const coordinates = readCoordinates(mapElement);
+        if (!coordinates) return;
+        if (typeof window.L === 'undefined') {
+          mapElement.textContent = 'Kartendienst nicht verfügbar.';
+          return;
+        }
 
-    <script>
-        document.querySelectorAll('.map[data-lat][data-lon]').forEach(el => {
-            const lat = parseFloat(el.getAttribute('data-lat'));
-            const lon = parseFloat(el.getAttribute('data-lon'));
-            const map = L.map(el).setView([lat, lon], 15);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                attribution: '&copy; OpenStreetMap'
-            }).addTo(map);
-            L.marker([lat, lon]).addTo(map);
-            setTimeout(() => map.invalidateSize(), 250);
+        mapElement.replaceChildren();
+        const map = window.L.map(mapElement, { scrollWheelZoom: false }).setView(
+          [coordinates.lat, coordinates.lon],
+          15
+        );
+        window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          attribution: '&copy; OpenStreetMap'
+        }).addTo(map);
+        window.L.marker([coordinates.lat, coordinates.lon], {
+          title: 'Alarmort',
+          alt: 'Alarmort'
+        }).addTo(map);
+        alarmMaps.set(mapElement, map);
+        window.setTimeout(() => map.invalidateSize(), 80);
+      }
+
+      document.querySelectorAll('.map-disclosure').forEach((disclosure) => {
+        const mapElement = disclosure.querySelector('.map[data-lat][data-lon]');
+        const coordinates = mapElement ? readCoordinates(mapElement) : null;
+        if (!coordinates) {
+          disclosure.hidden = true;
+          return;
+        }
+
+        const osmLink = disclosure.querySelector('.osm-link');
+        if (osmLink) {
+          const query = new URLSearchParams({
+            mlat: String(coordinates.lat),
+            mlon: String(coordinates.lon)
+          });
+          osmLink.href = `https://www.openstreetmap.org/?${query.toString()}#map=16/${coordinates.lat}/${coordinates.lon}`;
+        }
+
+        disclosure.addEventListener('toggle', () => {
+          if (!disclosure.open) return;
+          window.requestAnimationFrame(() => initializeMap(disclosure));
         });
-    </script>
+      });
+
+      document.querySelectorAll('.organization-panel').forEach((organization) => {
+        organization.addEventListener('toggle', () => {
+          if (!organization.open) return;
+          window.requestAnimationFrame(() => {
+            organization.querySelectorAll('.map-disclosure[open]').forEach(initializeMap);
+          });
+        });
+      });
+
+      const dateFormatter = new Intl.DateTimeFormat('de-DE', {
+        dateStyle: 'short',
+        timeStyle: 'short'
+      });
+
+      document.querySelectorAll('time[data-date]').forEach((element) => {
+        const rawValue = element.dataset.date.trim();
+        let date;
+        if (/^\d{10}$/.test(rawValue)) {
+          date = new Date(Number(rawValue) * 1000);
+        } else if (/^\d{13}$/.test(rawValue)) {
+          date = new Date(Number(rawValue));
+        } else {
+          date = new Date(rawValue);
+        }
+
+        if (!Number.isNaN(date.getTime())) {
+          element.textContent = dateFormatter.format(date);
+          element.title = rawValue;
+        }
+      });
+
+      let lastAlarmSignature = null;
+
+      async function checkForAlarmUpdates() {
+        try {
+          const response = await fetch('alarms.json', { cache: 'no-store' });
+          if (!response.ok) return;
+          const data = await response.json();
+
+          if (lastAlarmSignature === null) {
+            lastAlarmSignature = data.sig || '';
+          } else if (data.sig && data.sig !== lastAlarmSignature) {
+            window.location.reload();
+          }
+        } catch (error) {
+          // A temporary connectivity problem should not disrupt the current view.
+        }
+      }
+
+      checkForAlarmUpdates();
+      window.setInterval(checkForAlarmUpdates, 5000);
+    })();
+  </script>
 </body>
 
 </html>

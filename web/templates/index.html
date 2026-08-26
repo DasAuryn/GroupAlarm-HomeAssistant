@@ -4,450 +4,594 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>GroupAlarm – Quick Actions</title>
+  <title>GroupAlarm – Quick-Actions</title>
+
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20,500,0,0" />
+  {% include '_shared_styles.html' %}
   <style>
-    :root {
-      --bg: #07192f;
-      --bg2: #041124;
-      --glass: #0d2b52cc;
-      --glass2: #103460cc;
-      --edge: #1b4c8a;
-      --edge2: #2e6dd1;
-      --accent: #2f7bf5;
-      --accent2: #5a98ff;
-      --text: #e8f0ff;
-      --muted: #b9c7e6;
-      --chip: #0b2a52;
-      --glow: #2a7bf0aa;
+    .actions-grid {
+      padding: 12px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 9px;
     }
 
-    * {
-      box-sizing: border-box
-    }
-
-    html,
-    body {
-      height: 100%
-    }
-
-    body {
-      margin: 0;
-      color: var(--text);
-      background:
-        radial-gradient(1200px 600px at 15% -10%, #0b2a55 0%, transparent 60%),
-        radial-gradient(900px 500px at 100% 0%, #072142 0%, transparent 60%),
-        linear-gradient(180deg, var(--bg), var(--bg2));
-      font: 14px/1.45 Inter, system-ui, Segoe UI, Roboto, Arial, sans-serif;
-    }
-
-    /* header */
-    .bar {
-      position: sticky;
-      top: 0;
-      z-index: 5;
-      backdrop-filter: blur(10px);
-      background: linear-gradient(180deg, #0a1f3dbf, #081a31a0);
-      border-bottom: 1px solid #0f2f5a;
-      padding: 12px 18px;
+    .quick-action {
+      --qa-accent: var(--muted-strong);
+      --qa-border: var(--border-strong);
+      --qa-surface: #121f2f;
+      width: 100%;
+      min-height: 68px;
+      padding: 11px 12px;
       display: flex;
       align-items: center;
+      gap: 11px;
+      border: 1px solid var(--border);
+      border-left-color: var(--qa-accent);
+      border-left-width: 3px;
+      border-radius: 9px;
+      color: var(--text);
+      background: #0a1522;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .quick-action:hover {
+      border-color: var(--border-strong);
+      border-left-color: var(--qa-accent);
+      background: var(--surface-hover);
+    }
+
+    .quick-action:active {
+      background: #18283b;
+    }
+
+    .quick-action.is-alarm {
+      --qa-accent: #ff9ba2;
+      --qa-border: #793b49;
+      --qa-surface: var(--red-soft);
+    }
+
+    .quick-action.is-tag {
+      --qa-accent: #9ac2ff;
+      --qa-border: #345d91;
+      --qa-surface: var(--blue-soft);
+    }
+
+    .quick-action.is-unsupported {
+      border-left-color: var(--muted);
+      cursor: not-allowed;
+      filter: saturate(.4);
+    }
+
+    .quick-action:disabled {
+      color: var(--muted);
+      background: #0a131e;
+      opacity: .72;
+    }
+
+    .action-icon {
+      width: 34px;
+      height: 34px;
+      flex: 0 0 34px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--qa-border);
+      border-radius: 8px;
+      color: var(--qa-accent);
+      background: var(--qa-surface);
+    }
+
+    .action-icon svg,
+    .dialog-kind-icon svg {
+      width: 17px;
+      height: 17px;
+    }
+
+    .qa-material-symbol {
+      position: absolute;
+      visibility: hidden;
+      width: auto;
+      font-family: "Material Symbols Rounded";
+      font-size: 20px;
+      font-style: normal;
+      font-weight: 500;
+      font-feature-settings: "liga";
+      font-variation-settings: "FILL" 0, "wght" 500, "GRAD" 0, "opsz" 20;
+      letter-spacing: normal;
+      line-height: 1;
+      text-transform: none;
+      white-space: nowrap;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .action-icon.is-api-icon-ready .qa-material-symbol,
+    .dialog-kind-icon.is-api-icon-ready .qa-material-symbol {
+      position: static;
+      visibility: visible;
+    }
+
+    .action-icon.is-api-icon-ready .fallback-symbol,
+    .confirm-dialog .dialog-kind-icon.is-api-icon-ready .fallback-symbol {
+      display: none;
+    }
+
+    .action-copy {
+      min-width: 0;
+      display: block;
+    }
+
+    .action-name {
+      display: block;
+      overflow-wrap: anywhere;
+      color: inherit;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+
+    .action-type {
+      display: block;
+      margin-top: 3px;
+      overflow: hidden;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.25;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .action-chevron {
+      margin-left: auto;
+      color: var(--muted);
+      font-size: 21px;
+      font-weight: 300;
+      line-height: 1;
+    }
+
+    .confirm-dialog {
+      width: min(440px, calc(100vw - 28px));
+      max-width: none;
+      max-height: calc(100vh - 28px);
+      padding: 0;
+      overflow: auto;
+      border: 1px solid var(--border-strong);
+      border-radius: 12px;
+      color: var(--text);
+      background: var(--surface-raised);
+      box-shadow: 0 24px 70px rgb(0 0 0 / 55%);
+    }
+
+    .confirm-dialog::backdrop {
+      background: rgb(2 7 14 / 76%);
+      backdrop-filter: blur(3px);
+    }
+
+    .dialog-content {
+      padding: 20px;
+    }
+
+    .dialog-heading-row {
+      display: flex;
+      align-items: flex-start;
       gap: 12px;
     }
 
-    .logo {
-      width: 28px;
-      height: 28px;
-      border-radius: 8px;
-      background: linear-gradient(145deg, #1e3f74, #2f6bd3);
-      box-shadow: 0 0 0 1px #2a67c3, 0 6px 18px #0b2a5577, inset 0 1px 0 #ffffff22;
-    }
-
-    h1 {
-      margin: 0;
-      font-size: 18px;
-      letter-spacing: .2px;
-      font-weight: 650
-    }
-
-    /* layout */
-    .wrap {
-      max-width: 1180px;
-      margin: 18px auto;
-      padding: 0 18px
-    }
-
-    .grid {
+    .dialog-kind-icon {
+      --qa-accent: #ff9ba2;
+      --qa-border: #793b49;
+      --qa-surface: var(--red-soft);
+      width: 38px;
+      height: 38px;
+      flex: 0 0 38px;
       display: grid;
-      gap: 16px;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr))
+      place-items: center;
+      border: 1px solid var(--qa-border);
+      border-radius: 9px;
+      color: var(--qa-accent);
+      background: var(--qa-surface);
     }
 
-    /* card */
-    .card {
-      position: relative;
-      background: linear-gradient(180deg, var(--glass), var(--glass2));
-      border: 1px solid var(--edge);
-      border-radius: 18px;
-      padding: 14px 14px 10px;
-      box-shadow: 0 10px 30px #0008, 0 0 0 1px #0b2a55 inset;
-      transition: transform .06s ease, box-shadow .16s ease, border-color .16s ease;
+    .dialog-kind-icon svg {
+      width: 19px;
+      height: 19px;
     }
 
-    .card:hover {
-      transform: translateY(-1px);
-      border-color: #2a67c3;
-      box-shadow: 0 12px 34px #000a, 0 0 0 1px #1a4e86 inset;
-    }
-
-    .org {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 10px
-    }
-
-    .avatar {
-      width: 34px;
-      height: 34px;
-      border-radius: 50%;
-      flex: 0 0 34px;
-      object-fit: cover;
-      background: #0f3a64;
-      border: 1px solid #1b4e86;
-      box-shadow: 0 1px 0 #0007, inset 0 0 0 2px #0002;
-    }
-
-    .org-name {
-      font-weight: 700;
-      letter-spacing: .2px
-    }
-
-    .actions {
-      display: grid;
-      gap: 8px
-    }
-
-    .btn {
-      width: 100%;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px 12px;
-      border-radius: 12px;
-      cursor: pointer;
-      border: 1px solid #1d4e8f;
-      background: linear-gradient(180deg, var(--accent), var(--accent2));
-      color: #fff;
-      font-weight: 600;
-      box-shadow: 0 8px 18px var(--glow), inset 0 1px 0 #ffffff22;
-      transition: filter .12s ease, transform .04s ease, box-shadow .12s ease, border-color .12s ease;
-    }
-
-    .btn:hover {
-      filter: brightness(1.06);
-      box-shadow: 0 10px 22px var(--glow);
-      border-color: #3276eb;
-    }
-
-    .btn:active {
-      transform: translateY(1px)
-    }
-
-    .chip {
-      font-size: 12px;
-      padding: 2px 8px;
-      border-radius: 999px;
-      background: linear-gradient(180deg, #0f2f5a, #0c294f);
-      border: 1px solid #1a4a82;
-      color: var(--text);
-      opacity: .95;
-    }
-
-    .empty {
-      margin-top: 4px;
-      padding: 12px;
-      border-radius: 12px;
-      border: 1px dashed #1a406e;
-      color: var(--muted);
-      background: #0b2a4a88;
-    }
-
-    /* toast */
-    .toast {
-      position: fixed;
-      left: 50%;
-      bottom: 22px;
-      transform: translateX(-50%) translateY(16px);
-      background: linear-gradient(180deg, #10335f, #0e2b52);
-      border: 1px solid #2a67c3;
-      color: var(--text);
-      padding: 10px 14px;
-      border-radius: 12px;
-      box-shadow: 0 10px 26px #0009, 0 0 0 1px #0b2a55 inset;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity .18s ease, transform .18s ease;
-    }
-
-    .toast.show {
-      opacity: 1;
-      transform: translateX(-50%) translateY(0)
-    }
-
-    .dialog-backdrop {
-      position: fixed;
-      inset: 0;
-      z-index: 20;
+    .dialog-kind-icon .tag-symbol,
+    .confirm-dialog.is-tag .dialog-kind-icon .alarm-symbol {
       display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 18px;
-      background: #010814b8;
-      backdrop-filter: blur(5px);
     }
 
-    .dialog-backdrop.show {
-      display: flex;
+    .confirm-dialog.is-tag .dialog-kind-icon .tag-symbol {
+      display: block;
     }
 
-    .dialog {
-      width: min(420px, 100%);
-      border: 1px solid #2a67c3;
-      border-radius: 14px;
-      background: linear-gradient(180deg, #10335f, #0a2343);
-      box-shadow: 0 22px 60px #000c, 0 0 0 1px #0b2a55 inset;
-      padding: 18px;
+    .confirm-dialog.is-tag .dialog-kind-icon.is-api-icon-ready .tag-symbol {
+      display: none;
     }
 
     .dialog-title {
-      margin: 0 0 8px;
-      font-size: 17px;
-      font-weight: 700;
+      margin: 0;
+      color: var(--text);
+      font-size: 18px;
+      line-height: 1.3;
     }
 
     .dialog-text {
-      margin: 0;
+      margin: 5px 0 0;
       color: var(--muted);
+      font-size: 13px;
     }
 
-    .dialog-action {
-      margin-top: 12px;
-      padding: 10px 12px;
-      border-radius: 10px;
-      border: 1px solid #1a4a82;
-      background: #0b2a4a88;
-      font-weight: 700;
+    .dialog-action-name {
+      margin: 16px 0 0;
+      padding: 11px 12px;
       overflow-wrap: anywhere;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      background: #0a1522;
+      font-weight: 700;
     }
 
     .dialog-buttons {
-      display: flex;
-      gap: 10px;
-      justify-content: flex-end;
       margin-top: 18px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
     }
 
-    .dialog-btn {
-      min-width: 112px;
-      border: 1px solid #1d4e8f;
-      border-radius: 10px;
-      padding: 9px 12px;
+    .dialog-button {
+      min-width: 104px;
+      min-height: 42px;
+      padding: 8px 13px;
+      border: 1px solid var(--border-strong);
+      border-radius: 8px;
       color: var(--text);
-      background: linear-gradient(180deg, #0e2646, #0b2040);
+      background: #152336;
       font-weight: 700;
       cursor: pointer;
     }
 
-    .dialog-btn:hover {
-      filter: brightness(1.08);
-      border-color: #3276eb;
+    .dialog-button:hover {
+      background: #1b2c42;
     }
 
-    .dialog-btn.danger {
-      background: linear-gradient(180deg, #e43d3d, #b92727);
-      border-color: #ff7070;
+    .dialog-button.confirm {
+      border-color: #c94752;
       color: #fff;
-      box-shadow: 0 8px 18px #cf252566, inset 0 1px 0 #ffffff22;
+      background: #b93844;
     }
 
-    .nav {
-      margin-left: auto;
-      display: flex;
-      gap: 8px;
+    .confirm-dialog.is-tag .dialog-button.confirm {
+      border-color: #347ad0;
+      background: #2869b8;
     }
 
-    .tab {
-      display: inline-flex;
-      align-items: center;
-      gap: .4rem;
-      padding: 8px 12px;
-      border-radius: 10px;
-      text-decoration: none;
-      color: var(--text);
-      font-weight: 600;
-      letter-spacing: .1px;
-      background: linear-gradient(180deg, #0e2646, #0b2040);
-      border: 1px solid #123d73;
-      box-shadow: inset 0 1px 0 #ffffff22, 0 6px 16px #0005;
-      transition: filter .12s ease, transform .04s ease, border-color .12s ease;
+    .dialog-button:disabled {
+      cursor: wait;
+      opacity: .65;
     }
 
-    .tab:hover {
-      filter: brightness(1.06);
-      border-color: #1b4e86;
+    @media (max-width: 680px) {
+      .actions-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
     }
 
-    .tab:active {
-      transform: translateY(1px);
-    }
+    @media (max-width: 420px) {
+      .dialog-content {
+        padding: 17px;
+      }
 
-    .tab.active {
-      background: linear-gradient(180deg, var(--accent), var(--accent2));
-      border-color: #2e6dd1;
-      color: #fff;
-      box-shadow: 0 8px 18px var(--glow), inset 0 1px 0 #ffffff22;
+      .dialog-buttons {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .dialog-button {
+        min-width: 0;
+      }
     }
   </style>
 </head>
 
 <body>
-  <div class="bar">
-    <div class="logo" aria-hidden="true"></div>
-    <h1>GroupAlarm – Quick Actions</h1>
+  {% include '_app_header.html' %}
 
-    <header>
-      <a href="." class="tab {% if active_tab=='alarms_open' %}active{% endif %}">Offen</a>
-      <a href="closed" class="tab {% if active_tab=='alarms_closed' %}active{% endif %}">Geschlossen</a>
-      <a href="dashboard" class="tab {% if active_tab=='dashboard' %}active{% endif %}">Quick-Actions</a>
+  {% set nav = navigation_counts if navigation_counts is defined else {} %}
+  {% set action_total = nav.get('dashboard', 0) %}
+  <main class="page">
+    <header class="page-intro">
+      <div>
+        <span class="eyebrow">Schnellzugriff</span>
+        <h1 class="page-title">Quick-Actions</h1>
+        <p class="page-description">Alarme und Tags gezielt auslösen, übersichtlich nach Organisation sortiert.</p>
+      </div>
+      <div class="page-total">
+        <strong>{{ action_total }}</strong>
+        Aktionen
+      </div>
     </header>
 
-
-  </div>
-
-
-  <div class="wrap">
     {% if orgs|length == 0 %}
-    <div class="empty">Keine Quick Actions im Cache. Warte auf den nächsten Poll…</div>
+      <div class="empty-state page-empty">Keine Quick-Actions im Cache. Warte auf den nächsten Abruf.</div>
     {% else %}
-    <div class="grid">
-      {% for org in orgs %}
-      <div class="card">
-        <div class="org">
-          {% if org.avatar %}
-          <img class="avatar" src="{{ org.avatar }}" alt="Avatar {{ org.name }}" />
-          {% else %}
-          <div class="avatar"></div>
-          {% endif %}
-          <div class="org-name">{{ org.name }}</div>
-        </div>
+      <section class="organization-list" aria-label="Organisationen">
+        {% for org in orgs %}
+          {% set action_count = org.actions|length if org.actions else 0 %}
+          <details
+            class="organization-panel {% if action_count == 0 %}is-empty{% endif %}"
+            data-org-id="{{ org.id }}"
+            data-view="quick-actions"
+            data-content-key="{{ org.panel_content_key }}"
+            {% if action_count > 0 %}open{% endif %}
+          >
+            <summary class="organization-summary">
+              {% if org.avatar %}
+                <img class="organization-avatar" src="{{ org.avatar }}" alt="" />
+              {% else %}
+                <span class="organization-initial" aria-hidden="true">{{ (org.name or '?')[:1]|upper }}</span>
+              {% endif %}
+              <span class="organization-heading">
+                <span class="organization-name">{{ org.name }}</span>
+                <span class="organization-id">Organisation {{ org.id }}</span>
+              </span>
+              <span class="organization-count">
+                {% if action_count == 0 %}Keine Aktionen{% elif action_count == 1 %}1 Aktion{% else %}{{ action_count }} Aktionen{% endif %}
+              </span>
+              <span class="organization-chevron" aria-hidden="true"></span>
+            </summary>
 
-        {% if org.actions and org.actions|length > 0 %}
-        <div class="actions">
-          {% for qa in org.actions %}
-          <button class="btn quick-action" data-org-id="{{ org.id }}" data-qa-id="{{ qa.id }}"
-            data-qa-name="{{ qa.name|e }}">
-            <span>{{ qa.name }}</span>
-            {% if qa.category %}<span class="chip">{{ qa.category }}</span>{% endif %}
-          </button>
-          {% endfor %}
-        </div>
-        {% else %}
-        <div class="empty">Keine Quick Actions.</div>
-        {% endif %}
-      </div>
-      {% endfor %}
-    </div>
+            <div class="organization-body">
+              {% if action_count > 0 %}
+                <div class="actions-grid">
+                  {% for qa in org.actions %}
+                    {% set is_alarm = qa.resource == 'resource-template' %}
+                    {% set is_tag = qa.resource == 'tag' %}
+                    {% set is_supported = is_alarm or is_tag %}
+                    {% set qa_label = qa.name or 'Unbenannte Aktion' %}
+                    <button
+                      class="quick-action {% if is_alarm %}is-alarm{% elif is_tag %}is-tag{% else %}is-unsupported{% endif %}"
+                      type="button"
+                      data-org-id="{{ org.id }}"
+                      data-qa-id="{{ qa.id }}"
+                      data-qa-name="{{ qa_label }}"
+                      data-qa-type="{% if is_alarm %}alarm{% elif is_tag %}tag{% else %}unsupported{% endif %}"
+                      data-qa-icon="{{ qa.ui_icon }}"
+                      style="--qa-accent: {{ qa.ui_palette.accent }}; --qa-border: {{ qa.ui_palette.border }}; --qa-surface: {{ qa.ui_palette.surface }};"
+                      {% if not is_supported %}disabled aria-disabled="true"{% endif %}
+                    >
+                      <span class="action-icon {% if qa.ui_icon %}has-api-icon{% endif %}" aria-hidden="true">
+                        {% if qa.ui_icon %}<span class="qa-material-symbol">{{ qa.ui_icon }}</span>{% endif %}
+                        {% if is_tag %}
+                          <svg class="fallback-symbol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                            <path d="M20.6 13.6 13.7 20.5a2 2 0 0 1-2.8 0L3.5 13.1a2 2 0 0 1-.6-1.4V5a2 2 0 0 1 2-2h6.7a2 2 0 0 1 1.4.6l7.6 7.2a2 2 0 0 1 0 2.8Z" />
+                            <circle cx="8" cy="8" r="1.5" />
+                          </svg>
+                        {% else %}
+                          <svg class="fallback-symbol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                            <path d="M12 3a6 6 0 0 0-6 6v3.5L4 16h16l-2-3.5V9a6 6 0 0 0-6-6Z" />
+                            <path d="M9.5 19a2.8 2.8 0 0 0 5 0" />
+                          </svg>
+                        {% endif %}
+                      </span>
+                      <span class="action-copy">
+                        <span class="action-name">{{ qa_label }}</span>
+                        <span class="action-type">
+                          {% if is_alarm %}Alarm auslösen{% elif is_tag %}Tag auslösen{% else %}Nicht unterstützt{% endif %}
+                          {% if qa.category %} · {{ qa.category }}{% endif %}
+                        </span>
+                      </span>
+                      {% if is_supported %}<span class="action-chevron" aria-hidden="true">›</span>{% endif %}
+                    </button>
+                  {% endfor %}
+                </div>
+              {% else %}
+                <div class="empty-state">Keine Quick-Actions.</div>
+              {% endif %}
+            </div>
+          </details>
+        {% endfor %}
+      </section>
     {% endif %}
-  </div>
+  </main>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <div id="confirmDialog" class="dialog-backdrop" role="dialog" aria-modal="true" aria-labelledby="confirmTitle"
-    aria-describedby="confirmText">
-    <div class="dialog">
-      <h2 id="confirmTitle" class="dialog-title">Quick Action auslösen?</h2>
-      <p id="confirmText" class="dialog-text">Diese Aktion löst einen Alarm oder Tag in GroupAlarm aus.</p>
-      <div id="confirmAction" class="dialog-action"></div>
+
+  <dialog id="confirmDialog" class="confirm-dialog" aria-labelledby="confirmTitle" aria-describedby="confirmText">
+    <div class="dialog-content">
+      <div class="dialog-heading-row">
+        <span id="dialogKindIcon" class="dialog-kind-icon" aria-hidden="true">
+          <span id="dialogMaterialIcon" class="qa-material-symbol"></span>
+          <svg class="alarm-symbol fallback-symbol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M12 3a6 6 0 0 0-6 6v3.5L4 16h16l-2-3.5V9a6 6 0 0 0-6-6Z" />
+            <path d="M9.5 19a2.8 2.8 0 0 0 5 0" />
+          </svg>
+          <svg class="tag-symbol fallback-symbol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M20.6 13.6 13.7 20.5a2 2 0 0 1-2.8 0L3.5 13.1a2 2 0 0 1-.6-1.4V5a2 2 0 0 1 2-2h6.7a2 2 0 0 1 1.4.6l7.6 7.2a2 2 0 0 1 0 2.8Z" />
+            <circle cx="8" cy="8" r="1.5" />
+          </svg>
+        </span>
+        <div>
+          <h2 id="confirmTitle" class="dialog-title">Alarmaktion auslösen?</h2>
+          <p id="confirmText" class="dialog-text">Dadurch wird unmittelbar ein Alarm in GroupAlarm ausgelöst.</p>
+        </div>
+      </div>
+      <div id="confirmAction" class="dialog-action-name"></div>
       <div class="dialog-buttons">
-        <button id="cancelConfirm" class="dialog-btn" type="button">Abbrechen</button>
-        <button id="runConfirm" class="dialog-btn danger" type="button">Auslösen</button>
+        <button id="cancelConfirm" class="dialog-button" type="button">Abbrechen</button>
+        <button id="runConfirm" class="dialog-button confirm" type="button">Alarm auslösen</button>
       </div>
     </div>
-  </div>
+  </dialog>
+
+  {% include '_organization_panels_script.html' %}
   <script>
-    const toastEl = document.getElementById('toast');
-    const dialogEl = document.getElementById('confirmDialog');
-    const confirmActionEl = document.getElementById('confirmAction');
-    const cancelConfirmEl = document.getElementById('cancelConfirm');
-    const runConfirmEl = document.getElementById('runConfirm');
-    let toastTimer = null;
-    let pendingAction = null;
+    (() => {
+      const toastElement = document.getElementById('toast');
+      const dialogElement = document.getElementById('confirmDialog');
+      const confirmTitleElement = document.getElementById('confirmTitle');
+      const confirmTextElement = document.getElementById('confirmText');
+      const confirmActionElement = document.getElementById('confirmAction');
+      const dialogKindIconElement = document.getElementById('dialogKindIcon');
+      const dialogMaterialIconElement = document.getElementById('dialogMaterialIcon');
+      const cancelConfirmElement = document.getElementById('cancelConfirm');
+      const runConfirmElement = document.getElementById('runConfirm');
+      let toastTimer = null;
+      let pendingAction = null;
+      let dialogInvoker = null;
 
-    function showToast(msg) {
-      toastEl.textContent = msg;
-      toastEl.classList.add('show');
-      clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1800);
-    }
+      function materialIconResolves(iconName) {
+        const ligatureProbe = document.createElement('span');
+        ligatureProbe.className = 'qa-material-symbol';
+        ligatureProbe.textContent = iconName;
+        Object.assign(ligatureProbe.style, {
+          display: 'inline-block',
+          left: '-10000px',
+          position: 'fixed',
+          top: '0',
+          visibility: 'hidden'
+        });
 
-    function openConfirm(action) {
-      pendingAction = action;
-      confirmActionEl.textContent = action.qaName;
-      dialogEl.classList.add('show');
-      runConfirmEl.focus();
-    }
+        document.body.append(ligatureProbe);
+        const ligatureWidth = ligatureProbe.getBoundingClientRect().width;
+        ligatureProbe.remove();
 
-    function closeConfirm() {
-      pendingAction = null;
-      dialogEl.classList.remove('show');
-    }
-
-    async function press(orgId, qaId, qaName) {
-      try {
-        const pressPath = `press/${orgId}/${qaId}`;
-        const pressUrl = new URL(pressPath, window.location.href).toString();
-        const res = await fetch(pressUrl, { method: 'POST' });
-        if (!res.ok) {
-          const t = await res.text().catch(() => '');
-          throw new Error(`HTTP ${res.status}${t ? ' – ' + t : ''}`);
-        }
-        showToast(`„${qaName}“ ausgelöst`);
-      } catch (e) {
-        showToast(`Fehler: ${e.message}`);
+        return ligatureWidth > 0
+          && ligatureWidth <= 30;
       }
-    }
 
-    document.querySelectorAll('.quick-action').forEach((button) => {
-      button.addEventListener('click', () => {
-        openConfirm({
-          orgId: button.dataset.orgId,
-          qaId: button.dataset.qaId,
-          qaName: button.dataset.qaName
+      async function activateMaterialIcons() {
+        if (!document.fonts || typeof document.fonts.load !== 'function') return;
+        try {
+          const faces = await document.fonts.load('500 20px "Material Symbols Rounded"');
+          if (!faces.length) return;
+
+          const resolvedIcons = new Map();
+          document.querySelectorAll('.action-icon.has-api-icon .qa-material-symbol').forEach((symbol) => {
+            const iconName = symbol.textContent.trim();
+            if (!resolvedIcons.has(iconName)) {
+              resolvedIcons.set(iconName, materialIconResolves(iconName));
+            }
+            if (resolvedIcons.get(iconName)) {
+              symbol.closest('.action-icon').classList.add('is-api-icon-ready');
+            }
+          });
+        } catch (error) {
+          // The semantic fallback icons remain visible when the font is unavailable.
+        }
+      }
+
+      activateMaterialIcons();
+
+      function showToast(message, isError = false) {
+        toastElement.textContent = message;
+        toastElement.classList.toggle('is-error', isError);
+        toastElement.setAttribute('role', isError ? 'alert' : 'status');
+        toastElement.setAttribute('aria-live', isError ? 'assertive' : 'polite');
+        toastElement.classList.add('show');
+        window.clearTimeout(toastTimer);
+        toastTimer = window.setTimeout(
+          () => toastElement.classList.remove('show'),
+          isError ? 4500 : 2400
+        );
+      }
+
+      function setDialogType(type) {
+        const isTag = type === 'tag';
+        dialogElement.classList.toggle('is-tag', isTag);
+        confirmTitleElement.textContent = isTag ? 'Tag auslösen?' : 'Alarmaktion auslösen?';
+        confirmTextElement.textContent = isTag
+          ? 'Dadurch wird der Tag unmittelbar in GroupAlarm ausgelöst.'
+          : 'Dadurch wird unmittelbar ein Alarm in GroupAlarm ausgelöst.';
+        runConfirmElement.textContent = isTag ? 'Tag auslösen' : 'Alarm auslösen';
+      }
+
+      function openConfirm(action, invoker) {
+        pendingAction = action;
+        dialogInvoker = invoker;
+        confirmActionElement.textContent = action.qaName;
+        setDialogType(action.qaType);
+
+        const sourceIcon = invoker.querySelector('.action-icon');
+        const sourceStyle = window.getComputedStyle(invoker);
+        ['--qa-accent', '--qa-border', '--qa-surface'].forEach((property) => {
+          dialogKindIconElement.style.setProperty(property, sourceStyle.getPropertyValue(property));
+        });
+        dialogMaterialIconElement.textContent = action.qaIcon || '';
+        dialogKindIconElement.classList.toggle(
+          'is-api-icon-ready',
+          Boolean(sourceIcon && sourceIcon.classList.contains('is-api-icon-ready'))
+        );
+
+        dialogElement.showModal();
+        window.requestAnimationFrame(() => runConfirmElement.focus());
+      }
+
+      function closeConfirm() {
+        if (dialogElement.open) dialogElement.close();
+        pendingAction = null;
+        const invoker = dialogInvoker;
+        dialogInvoker = null;
+        if (invoker && invoker.isConnected) invoker.focus();
+      }
+
+      async function press(action) {
+        const pressPath = `press/${action.orgId}/${action.qaId}`;
+        const pressUrl = new URL(pressPath, window.location.href).toString();
+        const response = await fetch(pressUrl, { method: 'POST' });
+        if (!response.ok) {
+          const body = await response.text().catch(() => '');
+          throw new Error(`HTTP ${response.status}${body ? ` – ${body}` : ''}`);
+        }
+      }
+
+      document.querySelectorAll('.quick-action:not(:disabled)').forEach((button) => {
+        button.addEventListener('click', () => {
+          openConfirm({
+            orgId: button.dataset.orgId,
+            qaId: button.dataset.qaId,
+            qaName: button.dataset.qaName,
+            qaType: button.dataset.qaType,
+            qaIcon: button.dataset.qaIcon
+          }, button);
         });
       });
-    });
 
-    cancelConfirmEl.addEventListener('click', closeConfirm);
+      cancelConfirmElement.addEventListener('click', closeConfirm);
 
-    runConfirmEl.addEventListener('click', async () => {
-      if (!pendingAction) return;
-      const action = pendingAction;
-      closeConfirm();
-      await press(action.orgId, action.qaId, action.qaName);
-    });
-
-    dialogEl.addEventListener('click', (event) => {
-      if (event.target === dialogEl) closeConfirm();
-    });
-
-    window.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape' && dialogEl.classList.contains('show')) {
+      runConfirmElement.addEventListener('click', async () => {
+        if (!pendingAction || runConfirmElement.disabled) return;
+        const action = pendingAction;
+        runConfirmElement.disabled = true;
+        runConfirmElement.setAttribute('aria-busy', 'true');
         closeConfirm();
-      }
-    });
+
+        try {
+          await press(action);
+          showToast(`„${action.qaName}“ ausgelöst`);
+        } catch (error) {
+          showToast(`Fehler: ${error.message}`, true);
+        } finally {
+          runConfirmElement.disabled = false;
+          runConfirmElement.removeAttribute('aria-busy');
+        }
+      });
+
+      dialogElement.addEventListener('cancel', (event) => {
+        event.preventDefault();
+        closeConfirm();
+      });
+
+      dialogElement.addEventListener('click', (event) => {
+        if (event.target !== dialogElement) return;
+        const bounds = dialogElement.getBoundingClientRect();
+        const clickedInside = event.clientX >= bounds.left && event.clientX <= bounds.right
+          && event.clientY >= bounds.top && event.clientY <= bounds.bottom;
+        if (!clickedInside) closeConfirm();
+      });
+    })();
   </script>
-
-
-
 </body>
 
 </html>

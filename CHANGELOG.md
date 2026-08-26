@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.0.30
+
+feat(ui): redesign alarm and quick-action views
+
+- add collapsible organization sections with persisted state
+- show navigation counters for open, closed, and quick actions
+- introduce compact responsive layout for desktop and mobile
+- emphasize open alarms and defer map loading until expanded
+- display GroupAlarm Material icons for quick actions
+- derive dark-theme palettes from GroupAlarm action colors
+- improve confirmation dialogs, keyboard support, and focus handling
+- harden alarm, coordinate, color, and icon data validation
+
 ## 1.0.29
 
 - Fix Home Assistant Ingress navigation for alarm tabs and Quick Actions.

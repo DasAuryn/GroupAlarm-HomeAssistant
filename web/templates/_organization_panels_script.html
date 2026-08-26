@@ -1,0 +1,30 @@
+<script>
+  (() => {
+    const storagePrefix = 'groupalarm:organization-panel:v2:';
+
+    document.querySelectorAll('.organization-panel[data-org-id][data-view]').forEach((panel) => {
+      const storageKey = `${storagePrefix}${panel.dataset.view}:${panel.dataset.orgId}`;
+      const contentKey = panel.dataset.contentKey || '';
+
+      try {
+        const saved = JSON.parse(window.localStorage.getItem(storageKey) || 'null');
+        if (saved && saved.contentKey === contentKey && typeof saved.open === 'boolean') {
+          panel.open = saved.open;
+        }
+      } catch (error) {
+        // The disclosure remains usable when storage is blocked in an ingress frame.
+      }
+
+      panel.addEventListener('toggle', () => {
+        try {
+          window.localStorage.setItem(storageKey, JSON.stringify({
+            contentKey,
+            open: panel.open
+          }));
+        } catch (error) {
+          // Persistence is optional.
+        }
+      });
+    });
+  })();
+</script>
