@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.32
+
+- Add MQTT sensors per organization for the latest alarm message, address, coordinates, event ID, event name, and alarm time.
+- Combine latitude and longitude in one coordinate sensor, with both values available as attributes.
+- Hide alarm detail sensors from dashboards by default while keeping them available for automations.
+- Preserve complete texts as sensor attributes when they exceed Home Assistant's 255-character state limit.
+- Keep the latest alarm details available independently of the five-second alarm pulse.
+- Restore detail states through retained MQTT messages and preserve existing data when API requests fail.
+
 ## 1.0.31
 - some bugfixes
 

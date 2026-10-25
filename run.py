@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 import os, sys, json, time, pathlib, importlib.util
+import math
+from datetime import datetime, timezone
 from typing import Dict, Any, List
 import threading
-from run_state import save_alarms_cache, load_ui_cache  
+from run_state import save_alarms_cache, load_alarms_cache, load_ui_cache
 
 sys.path.insert(0, os.path.dirname(__file__) or "/")
 try:
@@ -38,6 +40,15 @@ ALARM_POLL_SEC = int(os.environ.get("ALARM_POLL_SEC", "5"))
 LAST_ALARM_IDS = {}
 ALARM_RESET_SECONDS = int(os.environ.get("ALARM_RESET_SECONDS", "5"))
 _last_alarm_published: dict[int, dict] = {}  # {org_id: {"id": int, "ts": epoch}}
+_last_alarm_details: dict[int, dict] = {}
+ALARM_DETAIL_SENSORS = (
+    ("message", "Alarmmeldung", "mdi:message-text"),
+    ("address", "Einsatzadresse", "mdi:map-marker"),
+    ("coordinates", "Koordinaten", "mdi:crosshairs-gps"),
+    ("event_id", "Einsatz-ID", "mdi:identifier"),
+    ("event_name", "Einsatzstichwort", "mdi:alarm-light"),
+    ("start_date", "Alarmierungszeitpunkt", "mdi:clock-outline"),
+)
 
 
 mqtt = None
@@ -177,6 +188,19 @@ def on_mqtt_message(client, userdata, msg):
     except Exception as e:
         print(json.dumps({"mqtt_on_message_err":str(e)}), flush=True)
 
+def on_mqtt_connect(client, userdata, flags, rc):
+    if rc == 0:
+        with CACHE_LOCK:
+            _last_alarm_details.clear()
+        org_ids = ORG_IDS or ([PRIMARY] if PRIMARY else (load_ui_cache() or {}).get("order", []))
+        for org_id in org_ids:
+            for field in ("latitude", "longitude"):
+                client.publish(
+                    f"{DISCOVERY}/sensor/{DEVICE_ID}/org{org_id}_alarm_{field}/config",
+                    b"", qos=1, retain=True,
+                )
+
+
 def try_setup_mqtt():
     global mqtt, have_mqtt
     if not MQTT_HOST:
@@ -186,6 +210,7 @@ def try_setup_mqtt():
         mqtt = paho.Client(client_id=f"{DEVICE_ID}", protocol=paho.MQTTv311)
         if MQTT_USER or MQTT_PASS:
             mqtt.username_pw_set(MQTT_USER, MQTT_PASS)
+        mqtt.on_connect = on_mqtt_connect
         mqtt.on_message = on_mqtt_message
         mqtt.connect(MQTT_HOST, MQTT_PORT, keepalive=60)
         mqtt.loop_start()
@@ -199,7 +224,7 @@ def mqtt_publish(topic, payload, retain=True):
     if not have_mqtt: return
     if isinstance(payload, (dict, list)):
         payload = json.dumps(payload, ensure_ascii=False)
-    mqtt.publish(topic, payload, qos=0, retain=retain)
+    return mqtt.publish(topic, payload, qos=0, retain=retain)
 
 def discovery_alarm_binary_sensor(org_id: int, org_name: str):
     if not have_mqtt: return
@@ -219,8 +244,130 @@ def discovery_alarm_binary_sensor(org_id: int, org_name: str):
         "value_template": "{{ 'ON' if value_json.active else 'OFF' }}",
         "json_attributes_topic": state_topic,
         "icon": "mdi:alarm-light",
+        "visible_by_default": True,
     }
     mqtt_publish(topic_cfg, payload, retain=True)
+
+def discovery_alarm_sensors(org_id: int, org_name: str):
+    if not have_mqtt:
+        return
+    state_topic = f"{DISCOVERY}/{DEVICE_ID}/org/{org_id}/alarm/details"
+    for field, label, icon in ALARM_DETAIL_SENSORS:
+        payload = {
+            "name": f"{org_name} – {label}",
+            "unique_id": f"{DEVICE_ID}_org{org_id}_alarm_{field}",
+            "visible_by_default": False,
+            "device": {
+                "identifiers": [DEVICE_ID],
+                "name": DEVICE_NAME,
+                "manufacturer": "GroupAlarm",
+                "model": "REST Bridge",
+            },
+            "state_topic": state_topic,
+            "value_template": "{{ value_json." + field + " }}",
+            "icon": icon,
+        }
+        if field in {"message", "address", "event_name"}:
+            payload["value_template"] = (
+                "{{ value_json." + field + "[:255] if value_json."
+                + field + " is not none else none }}"
+            )
+            payload["json_attributes_topic"] = state_topic
+            payload["json_attributes_template"] = (
+                "{{ {'" + field + "': value_json." + field + "} | tojson }}"
+            )
+        elif field == "start_date":
+            payload["device_class"] = "timestamp"
+        elif field == "coordinates":
+            payload["json_attributes_topic"] = state_topic
+            payload["json_attributes_template"] = (
+                "{{ {'latitude': value_json.latitude, 'longitude': value_json.longitude} | tojson }}"
+            )
+        mqtt_publish(
+            f"{DISCOVERY}/sensor/{DEVICE_ID}/org{org_id}_alarm_{field}/config",
+            payload,
+            retain=True,
+        )
+
+
+def _positive_alarm_id(value):
+    if isinstance(value, bool) or not isinstance(value, (int, str)):
+        return None
+    try:
+        number = int(value)
+    except ValueError:
+        return None
+    return number if number > 0 else None
+
+
+def _alarm_coordinate(value, limit):
+    if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+        return None
+    try:
+        number = float(value)
+    except (ValueError, OverflowError):
+        return None
+    return number if math.isfinite(number) and abs(number) <= limit else None
+
+
+def _alarm_timestamp(value):
+    if not isinstance(value, str):
+        return None
+    try:
+        date = datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
+        if date.tzinfo is not None:
+            return date.astimezone(timezone.utc).isoformat()
+    except (ValueError, OverflowError):
+        pass
+    return None
+
+
+def alarm_details_payload(org_id: int, alarm: dict | None):
+    alarm = alarm if isinstance(alarm, dict) else {}
+    event = alarm.get("event")
+    event = event if isinstance(event, dict) else {}
+    optional = alarm.get("optionalContent")
+    optional = optional if isinstance(optional, dict) else {}
+    payload = {
+        "organization_id": org_id,
+        "alarm_id": _positive_alarm_id(alarm.get("id")),
+        "event_id": (
+            _positive_alarm_id(event.get("id"))
+            or _positive_alarm_id(alarm.get("eventID"))
+            or _positive_alarm_id(alarm.get("eventId"))
+        ),
+        "latitude": _alarm_coordinate(optional.get("latitude"), 90),
+        "longitude": _alarm_coordinate(optional.get("longitude"), 180),
+        "start_date": _alarm_timestamp(alarm.get("startDate")),
+    }
+    for field, value in (
+        ("message", alarm.get("message")),
+        ("address", optional.get("address")),
+        ("event_name", event.get("name")),
+    ):
+        payload[field] = value if isinstance(value, str) and value.strip() else None
+    latitude, longitude = payload["latitude"], payload["longitude"]
+    payload["coordinates"] = (
+        f"{latitude}, {longitude}" if latitude is not None and longitude is not None else None
+    )
+    return payload
+
+
+def publish_alarm_details(org_id: int, alarm: dict | None):
+    if not have_mqtt:
+        return
+    payload = alarm_details_payload(org_id, alarm)
+    with CACHE_LOCK:
+        if _last_alarm_details.get(org_id) == payload:
+            return
+        result = mqtt_publish(
+            f"{DISCOVERY}/{DEVICE_ID}/org/{org_id}/alarm/details",
+            payload,
+            retain=True,
+        )
+        if result is not None and result.rc == 0:
+            _last_alarm_details[org_id] = payload
+
 
 def publish_alarm_state(org_id: int, alarm: dict | None, org_name: str):
     """
@@ -233,9 +380,12 @@ def publish_alarm_state(org_id: int, alarm: dict | None, org_name: str):
         mqtt_publish(state_topic, {"active": False, "ts": int(time.time())}, retain=False)
         return
 
-    ev = alarm.get("event") or {}
-    sev = ev.get("severity") or {}
-    opt = alarm.get("optionalContent") or {}
+    ev = alarm.get("event")
+    ev = ev if isinstance(ev, dict) else {}
+    sev = ev.get("severity")
+    sev = sev if isinstance(sev, dict) else {}
+    opt = alarm.get("optionalContent")
+    opt = opt if isinstance(opt, dict) else {}
     attrs = {
         "active": True,
         "id": alarm.get("id"),
@@ -282,6 +432,7 @@ def discovery_quick_action_button(org_id: int, org_name: str, qa: dict):
         "entity_category": "config",
         "command_topic": cmd_topic,
         "payload_press": "PRESS",
+        "visible_by_default": True,
     }, retain=True)
 
 def discovery_quick_actions_for_org(org_id: int, org_name: str, actions: List[dict]):
@@ -298,6 +449,13 @@ def mqtt_cleanup_org(org_id: int, actions: list[dict] | None = None):
         qa_id = qa.get("id")
         cfg_topic = f"{DISCOVERY}/button/{DEVICE_ID}/org{org_id}_qa{qa_id}/config"
         mqtt.publish(cfg_topic, b"", qos=0, retain=True)
+    for field, _label, _icon in ALARM_DETAIL_SENSORS:
+        cfg_topic = f"{DISCOVERY}/sensor/{DEVICE_ID}/org{org_id}_alarm_{field}/config"
+        mqtt.publish(cfg_topic, b"", qos=0, retain=True)
+    details_topic = f"{DISCOVERY}/{DEVICE_ID}/org/{org_id}/alarm/details"
+    mqtt.publish(details_topic, b"", qos=0, retain=True)
+    with CACHE_LOCK:
+        _last_alarm_details.pop(org_id, None)
     st = f"{DISCOVERY}/{DEVICE_ID}/org/{org_id}/state"
     mqtt.publish(st, b"", qos=0, retain=False)
 
@@ -381,13 +539,16 @@ def simplify_alarm(a: dict) -> dict:
         }
     }
 
-def fetch_org_alarms(org_id: int) -> list[dict]:
+def fetch_org_alarms(org_id: int) -> list[dict] | None:
     try:
         data = http("GET", f"/alarms?organization={org_id}")
-        return list(data.get("alarms", [])) if isinstance(data, dict) else []
+        alarms = data.get("alarms") if isinstance(data, dict) else None
+        if not isinstance(alarms, list) or any(not isinstance(alarm, dict) for alarm in alarms):
+            raise ValueError("Invalid alarms response")
+        return alarms
     except Exception as e:
         print(json.dumps({"alarms_error": str(e), "org": org_id}), flush=True)
-        return []
+        return None
 
 def fetch_open_event_ids(org_id: int) -> set[int]:
     try:
@@ -434,25 +595,36 @@ def annotate_alarm_event_status(alarms: list[dict], open_event_ids: set[int]) ->
 def alarm_poller_once(target_orgs: list[int]):
     ui = load_ui_cache() or {}
     names = ui.get("names", {})
+    previous_by_org = (load_alarms_cache() or {}).get("by_org") or {}
 
     by_org: dict[int, list] = {}
     now = int(time.time())
 
     for org in target_orgs:
-        alarms = fetch_org_alarms(org)
-        open_event_ids = fetch_open_event_ids(org)
-        by_org[org] = annotate_alarm_event_status(alarms, open_event_ids)
-
         org_name = names.get(org, f"Org {org}")
         discovery_alarm_binary_sensor(org, org_name)
+        discovery_alarm_sensors(org, org_name)
 
-        latest_id = max((a.get("id", 0) for a in alarms), default=0)
+        alarms = fetch_org_alarms(org)
+        if alarms is None:
+            by_org[org] = previous_by_org.get(str(org), previous_by_org.get(org, []))
+            alarm_obj = None
+        else:
+            open_event_ids = fetch_open_event_ids(org)
+            by_org[org] = annotate_alarm_event_status(alarms, open_event_ids)
+            alarm_obj = max(
+                (alarm for alarm in alarms if _positive_alarm_id(alarm.get("id"))),
+                key=lambda alarm: _positive_alarm_id(alarm.get("id")),
+                default=None,
+            )
+            publish_alarm_details(org, alarm_obj)
+
+        latest_id = _positive_alarm_id(alarm_obj.get("id")) if alarm_obj else 0
         last = _last_alarm_published.get(org, {})
         last_id = int(last.get("id") or 0)
         last_ts = int(last.get("ts") or 0)
 
         if latest_id and latest_id != last_id:
-            alarm_obj = next((a for a in alarms if a.get("id") == latest_id), None)
             publish_alarm_state(org, alarm_obj, org_name)
             _last_alarm_published[org] = {"id": latest_id, "ts": now}
 
@@ -471,6 +643,10 @@ def refresh_alarms_for_all_orgs():
     alarms_by_org: dict[int, list[dict]] = {}
     for oid in target_orgs:
         alarms = fetch_org_alarms(oid)
+        if alarms is None:
+            previous_by_org = (load_alarms_cache() or {}).get("by_org") or {}
+            alarms_by_org[oid] = previous_by_org.get(str(oid), previous_by_org.get(oid, []))
+            continue
         open_event_ids = fetch_open_event_ids(oid)
         alarms_by_org[oid] = annotate_alarm_event_status(alarms, open_event_ids)
 
