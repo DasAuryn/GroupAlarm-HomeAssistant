@@ -1,7 +1,8 @@
 import json, os, time, hashlib, threading
 
-UI_CACHE_FILE = "/data/ga_ui_cache.json"
-ALARMS_CACHE_FILE = "/data/ga_alarms_cache.json"
+DATA_DIR = os.environ.get("GROUPALARM_DATA_DIR", "/data")
+UI_CACHE_FILE = os.path.join(DATA_DIR, "ga_ui_cache.json")
+ALARMS_CACHE_FILE = os.path.join(DATA_DIR, "ga_alarms_cache.json")
 
 CACHE_LOCK = threading.RLock()
 ACTIONS_CACHE = {}
