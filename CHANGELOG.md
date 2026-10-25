@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.0.31
+- some bugfixes
+
 ## 1.0.30
 
 feat(ui): redesign alarm and quick-action views
