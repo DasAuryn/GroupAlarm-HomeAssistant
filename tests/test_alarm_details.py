@@ -74,6 +74,10 @@ class AlarmDetailsTests(unittest.TestCase):
     def detail_payloads(self, org):
         return [json.loads(payload) for _, payload, _ in self.publications(self.detail_topic(org))]
 
+    def alarm_payloads(self, org):
+        topic = f"{bridge.DISCOVERY}/{bridge.DEVICE_ID}/org/{org}/alarm"
+        return [json.loads(payload) for _, payload, _ in self.publications(topic)]
+
     def test_payload_maps_event_id_separately_and_normalizes_timestamp(self):
         payload = bridge.alarm_details_payload(11, self.alarm())
         self.assertEqual(payload["organization_id"], 11)
@@ -179,16 +183,101 @@ class AlarmDetailsTests(unittest.TestCase):
                             for _, _, options in self.publications(self.detail_topic(org))))
 
     def test_detail_state_precedes_alarm_pulse_and_survives_reset(self):
+        bridge.alarm_poller_once([11])
+        self.client.publish.reset_mock()
         self.org_alarms[11] = [self.alarm()]
         bridge.alarm_poller_once([11])
         topics = [topic for topic, _, _ in self.publications()]
         alarm_topic = f"{bridge.DISCOVERY}/{bridge.DEVICE_ID}/org/11/alarm"
         self.assertLess(topics.index(self.detail_topic(11)), topics.index(alarm_topic))
+        self.assertTrue(self.alarm_payloads(11)[-1]["active"])
         self.clock.return_value = 1006
         bridge.alarm_poller_once([11])
         self.assertFalse(json.loads(self.publications(alarm_topic)[-1][1])["active"])
         self.assertEqual(len(self.detail_payloads(11)), 1)
         self.assertEqual(bridge._last_alarm_details[11]["event_id"], 701)
+
+    def test_startup_uses_live_alarm_as_baseline_without_triggering(self):
+        self.cache = {"by_org": {"11": [self.alarm(alarm_id=99)]}}
+        self.org_alarms[11] = [self.alarm()]
+        bridge.alarm_poller_once([11])
+        bridge.alarm_poller_once([11])
+        self.assertEqual([payload["active"] for payload in self.alarm_payloads(11)], [False])
+        self.assertEqual(self.detail_payloads(11)[-1]["alarm_id"], 101)
+        self.assertEqual(bridge._last_alarm_published[11]["id"], 101)
+
+    def test_first_alarm_after_empty_startup_triggers_once(self):
+        bridge.alarm_poller_once([11])
+        self.org_alarms[11] = [self.alarm()]
+        bridge.alarm_poller_once([11])
+        bridge.alarm_poller_once([11])
+        self.assertEqual([payload["active"] for payload in self.alarm_payloads(11)], [False, True])
+        self.assertEqual(self.alarm_payloads(11)[-1]["id"], 101)
+
+    def test_initial_api_failures_do_not_turn_first_success_into_an_alarm(self):
+        self.cache = {"by_org": {"11": [self.alarm(alarm_id=99)]}}
+        self.org_alarms[11] = None
+        bridge.alarm_poller_once([11])
+        bridge.alarm_poller_once([11])
+        self.assertNotIn(11, bridge._last_alarm_published)
+        self.assertEqual(self.cache["by_org"][11][0]["id"], 99)
+        self.org_alarms[11] = [self.alarm()]
+        bridge.alarm_poller_once([11])
+        self.assertTrue(self.alarm_payloads(11))
+        self.assertFalse(any(payload["active"] for payload in self.alarm_payloads(11)))
+        self.assertEqual(self.detail_payloads(11)[-1]["alarm_id"], 101)
+        self.org_alarms[11] = [self.alarm(alarm_id=102)]
+        bridge.alarm_poller_once([11])
+        self.assertEqual([payload["id"] for payload in self.alarm_payloads(11) if payload["active"]], [102])
+
+    def test_organisations_initialize_independently(self):
+        self.org_alarms[11] = [self.alarm()]
+        bridge.alarm_poller_once([11])
+        self.org_alarms[11] = [self.alarm(alarm_id=102)]
+        self.org_alarms[22] = [self.alarm(org=22, alarm_id=201)]
+        bridge.alarm_poller_once([11, 22])
+        self.assertEqual([payload["active"] for payload in self.alarm_payloads(11)], [False, True])
+        self.assertEqual([payload["active"] for payload in self.alarm_payloads(22)], [False])
+        self.org_alarms[22] = [self.alarm(org=22, alarm_id=202)]
+        bridge.alarm_poller_once([11, 22])
+        self.assertEqual([payload["active"] for payload in self.alarm_payloads(22)], [False, True])
+
+    def test_restart_with_cached_alarms_does_not_replay_a_pulse(self):
+        self.org_alarms[11] = [self.alarm()]
+        bridge.alarm_poller_once([11])
+        self.org_alarms[11] = [self.alarm(alarm_id=102)]
+        bridge.alarm_poller_once([11])
+        self.assertTrue(self.alarm_payloads(11)[-1]["active"])
+        bridge._last_alarm_published.clear()
+        bridge._last_alarm_details.clear()
+        self.client.publish.reset_mock()
+        self.org_alarms[11] = [self.alarm(alarm_id=103)]
+        bridge.alarm_poller_once([11])
+        self.assertEqual([payload["active"] for payload in self.alarm_payloads(11)], [False])
+        self.assertEqual(self.detail_payloads(11)[-1]["alarm_id"], 103)
+
+    def test_alarm_pulse_resets_even_if_the_next_api_request_fails(self):
+        bridge.alarm_poller_once([11])
+        self.org_alarms[11] = [self.alarm()]
+        bridge.alarm_poller_once([11])
+        previous_cache = copy.deepcopy(self.cache)
+        self.clock.return_value = 1006
+        self.org_alarms[11] = None
+        bridge.alarm_poller_once([11])
+        self.assertEqual([payload["active"] for payload in self.alarm_payloads(11)], [False, True, False])
+        self.assertEqual(self.cache, previous_cache)
+
+    def test_mqtt_reconnect_preserves_baseline_without_replaying_an_alarm(self):
+        self.org_alarms[11] = [self.alarm()]
+        bridge.alarm_poller_once([11])
+        self.client.publish.reset_mock()
+        bridge.on_mqtt_connect(self.client, None, {}, 0)
+        bridge.alarm_poller_once([11])
+        self.assertFalse(any(payload["active"] for payload in self.alarm_payloads(11)))
+        self.assertEqual(self.detail_payloads(11)[-1]["alarm_id"], 101)
+        self.org_alarms[11] = [self.alarm(alarm_id=102)]
+        bridge.alarm_poller_once([11])
+        self.assertEqual([payload["id"] for payload in self.alarm_payloads(11) if payload["active"]], [102])
 
     def test_changed_details_on_same_alarm_id_replace_old_optional_values(self):
         self.org_alarms[11] = [self.alarm()]

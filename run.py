@@ -620,6 +620,12 @@ def alarm_poller_once(target_orgs: list[int]):
             publish_alarm_details(org, alarm_obj)
 
         latest_id = _positive_alarm_id(alarm_obj.get("id")) if alarm_obj else 0
+        if org not in _last_alarm_published:
+            publish_alarm_state(org, None, org_name)
+            if alarms is not None:
+                _last_alarm_published[org] = {"id": latest_id, "ts": now}
+            continue
+
         last = _last_alarm_published.get(org, {})
         last_id = int(last.get("id") or 0)
         last_ts = int(last.get("ts") or 0)

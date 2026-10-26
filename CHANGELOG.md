@@ -1,4 +1,6 @@
 # Changelog
+## 1.0.33
+- Bugfix: On updates or restarts, the binary sensors switched to on. This is fixed.
 
 ## 1.0.32
 
